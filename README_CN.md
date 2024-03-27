@@ -39,7 +39,7 @@ Google 提供了一个 `okhttp` 到 `Cronet` 的桥接实现 [cronet-transport-f
 ## 构建唯一的 CronetEngine
 具体的 api 说明请参考 [Cronet](https://developer.android.com/develop/connectivity/cronet)
 ```kotlin
-    // cronetEngine需要要保持全局唯一性，不可重复创建
+    // cronetEngine 需要要保持全局唯一性，不可重复创建
     private val cronetEngine: CronetEngine by lazy(LazyThreadSafetyMode.NONE) {
         val httpCacheDir =
             File(this.applicationContext.externalCacheDir ?: this.applicationContext.cacheDir, "http")
@@ -55,7 +55,7 @@ Google 提供了一个 `okhttp` 到 `Cronet` 的桥接实现 [cronet-transport-f
             .enableHttpCache(CronetEngine.Builder.HTTP_CACHE_DISABLED, 1048576)
             .enableHttp2(true)
             .enableQuic(true)
-            .setThreadPriority(-19)
+            .setThreadPriority(-1)
             .enableBrotli(true)
             .build()
 ```
@@ -94,6 +94,11 @@ Google 提供了一个 `okhttp` 到 `Cronet` 的桥接实现 [cronet-transport-f
     cronetClient.newCall(request).execute()
 ```
 
+# 混淆
+你需要增加 cronet 的混淆规则。如果你是用 Google 官方提供的版本，则会自动包含。
+
+
 # Thanks
 [okhttp](https://github.com/square/okhttp)
+
 [cronet-transport-for-okhttp](https://github.com/google/cronet-transport-for-okhttp)
