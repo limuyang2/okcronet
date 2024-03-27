@@ -8,7 +8,29 @@ Google 提供了一个`okhttp`到`Cronet`的桥接实现[cronet-transport-for-ok
 关于 okhhtp 在对 HTTP3/QUIC 的支持性方面的解答，可以查看此[issues](https://github.com/square/okhttp/issues/907)。总结来说就是，okhttp不会再去实现 HTTP3/QUIC 的内容，应该使用拦截器的方式交由 Cronet 实现。可是正如前面提到的，拦截器方式有诸多不兼容问题存在。
 
 ## 引用
+你需要同时引用本库以及 Cronet 库。
+关于 Cronet 的引用，你可以使用任何 Cronet 的实现库，只要它遵守 cronet-api 
 
+### 引入本库
+```
+    // 引入本库
+    implementation("io.github.limuyang2:okcronet:1.0.0")
+
+```
+
+### 引入 Cronet 库
+```
+    // 示例，这是直接引入 Google 官方提供的 Cronet，并且包含本地 so 库的 lib
+    implementation("org.chromium.net:cronet-api:119.6045.31")
+    implementation("org.chromium.net:cronet-common:119.6045.31")
+    implementation("org.chromium.net:cronet-embedded:119.6045.31")
+
+
+    // 如果你是直接使用 Google Play 的海外app，不需要考虑中国大陆的情况，可以直接使用 Google Play 提供的 so，不需要在APK中打包 so 文件
+    // 参考链接 https://developer.android.com/develop/connectivity/cronet/start#kts
+    //
+    implementation("com.google.android.gms:play-services-cronet:18.0.1")
+```
 
 # 如何使用
 整体使用方式与 okhttp 使用方式保持一致。只是多了一个 `CronetEngine` 的创建工作。
