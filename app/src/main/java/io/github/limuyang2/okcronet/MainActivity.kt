@@ -65,6 +65,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun request() {
         lifecycleScope.launch {
+            // 创建 CronetClient
             val cronetClient = CronetClient.Builder(cronetEngine)
                 .setCallTimeoutMillis(10_000)
                 .addInterceptor(LogInterceptor())
@@ -98,11 +99,13 @@ class MainActivity : AppCompatActivity() {
                 })
                 .build()
 
+            // 构建 Request
             val request = Request.Builder()
-                .url("https://api.oick.cn/lishi/api.php")
+                .url("https://www.fastly.com/quic-http-3")
                 .get()
                 .build()
 
+            // 发起网络请求
             cronetClient.newCall(request).execute()
         }
 
