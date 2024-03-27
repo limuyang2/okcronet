@@ -3,6 +3,13 @@ A network request library similar to OKHTTP, implemented using Cronet
 
 [中文](https://github.com/limuyang2/okcronet/blob/main/README_CN.md)
 
+# Why
+Google provides a bridge implementation from `okhttp` to `Cronet` [cronet-transport-for-okhttp](https://github.com/google/cronet-transport-for-okhttp/), but as in `README` As described in the `Incompatibilities` content, you cannot use the source code to improve its functionality.
+
+Therefore, the goal of the okcronet project is to solve the problems of HTTP3/QUIC support provided by interceptors implemented by `Cronet`.
+
+For answers about `okhttp`'s support for HTTP3/QUIC, you can view this [issues](https://github.com/square/okhttp/issues/907).
+
 # Advantages of okcronet
 * Easy to use, consistent with OkHttp usage
 * Supports HTTP3/QUIC, which can provide better network performance

@@ -8,6 +8,11 @@ Google 提供了一个 `okhttp` 到 `Cronet` 的桥接实现 [cronet-transport-f
 
 关于 `okhttp` 在对 HTTP3/QUIC 的支持性方面的解答，可以查看此[issues](https://github.com/square/okhttp/issues/907)。
 
+## okcronet 的优势
+* 使用简单，与 OkHttp 使用方式保持一致
+* 支持 HTTP3/QUIC，可以提供更好的网络性能
+* 支持 Cronet 的所有功能，例如缓存、线程池、代理等
+
 ## 引用
 你需要同时引用本库以及 Cronet 库。
 关于 Cronet 的引用，你可以使用任何 Cronet 的实现库，只要它遵守 cronet-api 
