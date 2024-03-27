@@ -27,11 +27,14 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
     }
-    kotlinOptions {
-        jvmTarget = "1.8"
+    kotlin {
+        jvmToolchain(11)
+    }
+    buildFeatures {
+        viewBinding = true
     }
 }
 
@@ -45,4 +48,12 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+
+    implementation("com.squareup.okio:okio:3.8.0")
+
+    implementation(project(":okcronet"))
+
+    implementation("org.chromium.net:cronet-api:119.6045.31")
+    implementation("org.chromium.net:cronet-common:119.6045.31")
+    implementation("org.chromium.net:cronet-embedded:119.6045.31")
 }
