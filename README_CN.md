@@ -4,7 +4,7 @@
 # Why
 Google 提供了一个 `okhttp` 到 `Cronet` 的桥接实现 [cronet-transport-for-okhttp](https://github.com/google/cronet-transport-for-okhttp/)，但是正如 `README` 中 `Incompatibilities`(不兼容性)内容中所描述的，你无法使用该源码来完善其功能。
 
-因此，OKCorNet 项目的目标是，解决使用 Cronet 实现的拦截器来提供的 HTTP3/QUIC 支持中存在的问题。
+因此，okcronet 项目的目标是，解决使用 `Cronet` 实现的拦截器来提供的 HTTP3/QUIC 支持中存在的问题。
 
 关于 `okhttp` 在对 HTTP3/QUIC 的支持性方面的解答，可以查看此[issues](https://github.com/square/okhttp/issues/907)。
 
