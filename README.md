@@ -30,6 +30,7 @@ implementation("org.chromium.net:cronet-common:119.6045.31")
 implementation("org.chromium.net:cronet-embedded:119.6045.31")
 ```
 ### Google Play Cronet:
+Reference link - [android develop](https://developer.android.com/develop/connectivity/cronet/start#kts)
 ```
 implementation("com.google.android.gms:play-services-cronet:18.0.1")
 ```
