@@ -87,7 +87,7 @@ The usage is consistent with the usage of okhttp. There is just one more `Cronet
 ```
 
 # Proguard
-You need to add obfuscation rules for cronet. If you are using the version officially provided by Google, it will be included automatically.
+You need to add obfuscation rules for `cronet`. If you are using the version officially provided by Google, it will be included automatically.
 
 
 # Thanks
