@@ -38,6 +38,8 @@ Google 提供了一个 `okhttp` 到 `Cronet` 的桥接实现 [cronet-transport-f
     implementation("com.google.android.gms:play-services-cronet:18.0.1")
 ```
 
+Google 官方提供的包不是最新的，如你想使用与chromium同步的最新版本，可以访问官方的存储桶获得[google cloud](https://console.cloud.google.com/storage/browser/chromium-cronet/android?pageState=(%22StorageObjectListTable%22:(%22f%22:%22%255B%255D%22))&prefix=&forceOnObjectsSortingFiltering=true)
+
 # 如何使用
 整体使用方式与 okhttp 使用方式保持一致。只是多了一个 `CronetEngine` 的创建工作。
 
