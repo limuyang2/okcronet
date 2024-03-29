@@ -23,6 +23,8 @@
  */
 package okcronet
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import okcronet.http.CookieJar
 import okcronet.http.Request
 import org.chromium.net.CronetEngine
@@ -48,7 +50,9 @@ class CronetClient private constructor(
      * 请求结束信息的监听.
      * Listener on the request finished message.
      */
-    val requestFinishedInfoListener: RequestFinishedInfo.Listener?
+    val requestFinishedInfoListener: RequestFinishedInfo.Listener?,
+    val networkHandle: Long?,
+    val annotationList: List<Any>?,
 ) : Call.Factory {
 
     override fun newCall(request: Request): Call = RealCall(this, request)
@@ -64,7 +68,8 @@ class CronetClient private constructor(
         private val interceptors: MutableList<Interceptor> = ArrayList()
 
         private var requestFinishedInfoListener: RequestFinishedInfo.Listener? = null
-
+        private var networkHandle: Long? = null
+        private var annotationList: MutableList<Any>? = null
 
         /**
          * Set read timeout millis
@@ -145,8 +150,67 @@ class CronetClient private constructor(
             return this
         }
 
+        /**
+         * Sets a listener that gets invoked after [org.chromium.net.UrlRequest.Callback.onCanceled],
+         * [org.chromium.net.UrlRequest.Callback.onFailed] or
+         * [org.chromium.net.UrlRequest.Callback.onSucceeded] return.
+         *
+         * <p>The listener is invoked  with the request finished info on an
+         * [java.util.concurrent.Executor] provided by [RequestFinishedInfo.Listener.getExecutor].
+         *
+         * 设置在 [org.chromium.net.UrlRequest.Callback.onCanceled] 或
+         * [org.chromium.net.UrlRequest.Callback.onFailed] 或
+         * [org.chromium.net.UrlRequest.Callback.onSucceeded] 返回之后调用的监听器。
+         *
+         * <p> 使用请求完成的信息调用监听器
+         * [RequestFinishedInfo.Listener.getExecutor] 提供的 [java.util.concurrent.Executor]。
+         *
+         * @param listener the listener for finished requests.
+         * @return the builder to facilitate chaining.
+         */
         fun setRequestFinishedInfoListener(listener: RequestFinishedInfo.Listener?): Builder {
             requestFinishedInfoListener = listener
+            return this
+        }
+
+        /**
+         * Binds the request to the specified network handle. Cronet will send this request only
+         * using the network associated to this handle. If this network disconnects the request will
+         * fail, the exact error will depend on the stage of request processing when the network
+         * disconnects.
+         *
+         * Only available starting from Android Marshmallow.
+         *
+         * 将请求绑定到指定的网络句柄。Cronet将仅使用与此句柄关联的网络发送此请求。如果此网络断开连接，请求将
+         * 失败，确切的错误将取决于网络断开时请求处理的阶段。
+         *
+         * 仅从 Android M开始可用。
+         *
+         * @param networkHandle the network handle to bind the request to. Specify
+         * [CronetEngine.UNBIND_NETWORK_HANDLE] to unbind.
+         * @return the builder to facilitate chaining.
+         */
+        @RequiresApi(Build.VERSION_CODES.M)
+        fun bindToNetwork(networkHandle: Long): Builder {
+            this.networkHandle = networkHandle
+            return this
+        }
+
+        /**
+         * Associates the annotation object with this request. May add more than one. Passed through
+         * to a [RequestFinishedInfo.Listener], see [RequestFinishedInfo.getAnnotations].
+         *
+         * 将annotation对象与此请求关联。可以添加多个。传递到 [RequestFinishedInfo.Listener]，
+         * 请参阅 [RequestFinishedInfo.getAnnotations]。
+         *
+         * @param annotation an object to pass on to the {@link RequestFinishedInfo.Listener} with a
+         * {@link RequestFinishedInfo}.
+         * @return the builder to facilitate chaining.
+         */
+        fun addRequestAnnotation(annotation: Any): Builder {
+            (annotationList ?: ArrayList<Any>().apply {
+                annotationList = this
+            }).add(annotation)
             return this
         }
 
@@ -160,7 +224,9 @@ class CronetClient private constructor(
                 callTimeoutMillis,
                 cookieJar,
                 interceptors,
-                requestFinishedInfoListener
+                requestFinishedInfoListener,
+                networkHandle,
+                annotationList
             )
         }
 

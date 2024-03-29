@@ -50,6 +50,14 @@ class CallCronetInterceptor(private val client: CronetClient) : Interceptor {
             .addRequestAnnotation(AnnotationRequestInfo(request.method, request.priority))
             .setRequestFinishedListener(client.requestFinishedInfoListener)
 
+        client.networkHandle?.let {
+            urlRequestBuilder.bindToNetwork(it)
+        }
+
+        client.annotationList?.forEach {
+            urlRequestBuilder.addRequestAnnotation(it)
+        }
+
         if (request.disableCache) {
             urlRequestBuilder.disableCache()
         }

@@ -1,5 +1,6 @@
 package io.github.limuyang2.okcronet
 
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.enableEdgeToEdge
@@ -97,7 +98,9 @@ class MainActivity : AppCompatActivity() {
                         }
                     }
                 })
-                .build()
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                cronetClient.bindToNetwork(10)
+            }
 
             // 构建 Request
             val request = Request.Builder()
@@ -106,7 +109,7 @@ class MainActivity : AppCompatActivity() {
                 .build()
 
             // 发起网络请求
-            cronetClient.newCall(request).execute()
+            cronetClient .build().newCall(request).execute()
         }
 
     }
