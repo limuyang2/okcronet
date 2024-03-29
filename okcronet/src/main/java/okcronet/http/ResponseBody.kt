@@ -44,7 +44,7 @@ abstract class ResponseBody: Closeable {
     /**
      * 返回 [bytes] 或 [byteStream] 的大小.
      * -1 为未知.
-     *
+     * <p>
      * Returns the size of [bytes] or [byteStream] .
      * -1 for unknown.
      */
@@ -59,6 +59,12 @@ abstract class ResponseBody: Closeable {
      *
      * 此方法将整个响应体加载到内存中。如果响应体非常大，则可能会触发[OutOfMemoryError]。
      * 如果可能，请选择流式传输响应主体。
+     *
+     * Returns the response as a [ByteArray].
+     *
+     * This method loads entire response body into memory. If the response body is very large this
+     * may trigger an [OutOfMemoryError]. Prefer to stream the response body if this is a
+     * possibility for your response.
      */
     @Throws(IOException::class)
     fun bytes() = consumeSource(BufferedSource::readByteArray) { it.size }
@@ -94,6 +100,8 @@ abstract class ResponseBody: Closeable {
     }
 
     /**
+     * 以字符流的形式返回响应。
+     *
      * Returns the response as a character stream.
      *
      * If the response starts with a
@@ -110,6 +118,8 @@ abstract class ResponseBody: Closeable {
     }
 
     /**
+     * 以字符串形式返回响应。
+     *
      * Returns the response as a string.
      *
      * If the response starts with a

@@ -27,11 +27,7 @@ import java.nio.charset.Charset
 import java.util.Locale
 import java.util.regex.Pattern
 
-/**
- * @author 李沐阳
- * @date 2023/2/21
- * @description
- */
+
 class MediaType private constructor(
     private val mediaType: String,
 

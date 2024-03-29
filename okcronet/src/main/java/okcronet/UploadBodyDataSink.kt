@@ -47,11 +47,11 @@ internal class UploadBodyDataSink : Sink {
 
     /**
      * Whether the sink has been closed.
-     * skin 是否已经关闭。
-     *
      *
      * Calling close() has no practical use but we check that nobody tries to write to the sink
      * after closing it, which is an indication of misuse.
+     *
+     * skin 是否已经关闭。
      */
     private val isClosed = AtomicBoolean()
 

@@ -127,9 +127,9 @@ internal fun Char.parseHexDigit(): Int = when (this) {
     else -> -1
 }
 
-infix fun Byte.and(mask: Int): Int = toInt() and mask
-infix fun Short.and(mask: Int): Int = toInt() and mask
-infix fun Int.and(mask: Long): Long = toLong() and mask
+internal infix fun Byte.and(mask: Int): Int = toInt() and mask
+internal infix fun Short.and(mask: Int): Int = toInt() and mask
+internal infix fun Int.and(mask: Long): Long = toLong() and mask
 
 
 /** Equivalent to `string.substring(startIndex, endIndex).trim()`. */

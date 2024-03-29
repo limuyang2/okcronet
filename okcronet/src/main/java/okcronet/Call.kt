@@ -29,11 +29,6 @@ import okio.Timeout
 import java.io.IOException
 
 
-/**
- * @author 李沐阳
- * @date 2023/5/11
- * @description
- */
 interface Call : Cloneable {
 
     /** Returns the original request that initiated this call. */

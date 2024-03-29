@@ -44,8 +44,13 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * Cronet 回调的实现类，这是涉及到异步同步转换的核心的桥梁。
+ * Cronet 回调的实现类，这是涉及到异步到同步转换的核心的桥梁。
  * 此类完成了核心的数据接收工作。可继承此类，用于实现想要的数据类型。
+ *
+ * An implementation of the Cronet callback.
+ * This is the bridge that comes to the core of the asynchronous to synchronous conversion.
+ * This class completes the core data reception work.
+ * This class can be inherited for implementing the desired data type.
  */
 open class SourceCallback(readTimeoutMillis: Long, private val cookieJar: CookieJar?) :
     UrlRequest.Callback() {

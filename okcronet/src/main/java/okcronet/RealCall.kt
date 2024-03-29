@@ -39,8 +39,9 @@ import java.util.concurrent.atomic.AtomicBoolean
  */
 internal class RealCall(
     private val client: CronetClient,
-    /** 应用程序的原始请求，不受重定向或身份验证标头的影响. */
-    private val request: Request,
+    /** 应用程序的原始请求，不受重定向或身份验证标头的影响.
+     * The application's original request, unaffected by the redirect or authentication headers. */
+    private val request: Request
 ) : Call {
 
     private var callCronetInterceptor: CallCronetInterceptor? = null

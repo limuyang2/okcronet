@@ -26,11 +26,6 @@ package okcronet
 import okcronet.http.Response
 import java.io.IOException
 
-/**
- * @author 李沐阳
- * @date 2023/5/11
- * @description
- */
 interface Callback {
     /**
      * Called when the request could not be executed due to cancellation, a connectivity problem or

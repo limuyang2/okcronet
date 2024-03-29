@@ -38,11 +38,17 @@ class Response internal constructor(
     val urlResponseInfo: UrlResponseInfo,
     val body: ResponseBody?,
 ) {
+    /** Returns true if [.code] is in the range [200..300).  */
     val isSuccessful: Boolean
         get() = urlResponseInfo.httpStatusCode in 200..299
 
+    /** HTTP status code.  */
     val code: Int
     get() = urlResponseInfo.httpStatusCode
+
+    /** HTTP status message.  */
+    val message: String
+        get() = urlResponseInfo.httpStatusText
 
 
     fun newBuilder(): Builder = Builder(this)

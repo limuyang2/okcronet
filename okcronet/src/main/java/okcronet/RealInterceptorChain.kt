@@ -43,17 +43,6 @@ internal class RealInterceptorChain(
     override fun proceed(request: Request): Response {
         check(index < interceptors.size)
 
-//        calls++
-
-//        if (exchange != null) {
-//            check(exchange.finder.sameHostAndPort(request.url)) {
-//                "network interceptor ${interceptors[index - 1]} must retain the same host and port"
-//            }
-//            check(calls == 1) {
-//                "network interceptor ${interceptors[index - 1]} must call proceed() exactly once"
-//            }
-//        }
-
         // Call the next interceptor in the chain.
         val next = copy(index = index + 1, request = request)
         val interceptor = interceptors[index]
@@ -61,12 +50,6 @@ internal class RealInterceptorChain(
         @Suppress("USELESS_ELVIS")
         val response = interceptor.intercept(next) ?: throw NullPointerException(
             "interceptor $interceptor returned null")
-
-//        if (exchange != null) {
-//            check(index + 1 >= interceptors.size || next.calls == 1) {
-//                "network interceptor $interceptor must call proceed() exactly once"
-//            }
-//        }
 
         check(response.body != null) { "interceptor $interceptor returned a response with no body" }
 

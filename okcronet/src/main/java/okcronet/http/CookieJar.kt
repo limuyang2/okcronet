@@ -48,9 +48,12 @@ interface CookieJar {
      */
     fun load(url: HttpUrl): List<Cookie>
 
-    /** 加载所有的 cookie */
+    /** Load all cookies */
     fun loadAll(): List<Cookie>
 
+    /**
+     * Clear all cookies
+     */
     fun clear()
 
     companion object {

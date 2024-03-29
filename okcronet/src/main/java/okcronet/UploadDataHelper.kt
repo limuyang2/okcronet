@@ -34,7 +34,9 @@ import java.nio.ByteBuffer
 import java.util.concurrent.*
 
 /**
- * 提供 Cornet 的 [UploadDataProvider]，用于将 RequestBody 进行上传
+ * 提供 Cornet 的 [UploadDataProvider]，用于将 RequestBody 进行上传。
+ *
+ * Provide Cornet's [UploadDataProvider] for uploading RequestBody.
  */
 class UploadDataHelper private constructor() {
 
@@ -44,6 +46,8 @@ class UploadDataHelper private constructor() {
 
         /**
          * 生成并获取 [UploadDataProvider]
+         *
+         * Generate and get [UploadDataProvider].
          *
          * @param requestBody 请求对象
          * @param writeTimeoutMillis 写入超时时间

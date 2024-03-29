@@ -36,13 +36,17 @@ import java.io.IOException
 import java.net.ProtocolException
 
 /**
- * Cronet 回调的一个实现. 这是涉及到异步同步转换的核心的桥梁。
+ * Cronet 回调的一个实现，获取[Response]类型。
+ *
+ * An implementation of the Cronet callback. Get [Response] type.
  */
 class ResponseCallback(private val request: Request, readTimeoutMillis: Long, cookieJar: CookieJar? = null) :
     SourceCallback(readTimeoutMillis, cookieJar) {
 
     /**
      * 注意：这里可能会发生阻塞，不建议在主线线程使用
+     *
+     * Note: Blocking may occur here. It is not recommended to use it on the main thread.
      */
     val response: Response
         @Throws(IOException::class)
@@ -51,6 +55,8 @@ class ResponseCallback(private val request: Request, readTimeoutMillis: Long, co
 
     /**
      * 通过Cronet回调创建 [Response]
+     *
+     * Create [Response] via Cronet callback
      */
     @Throws(IOException::class)
     private fun createResponse(
@@ -71,6 +77,8 @@ class ResponseCallback(private val request: Request, readTimeoutMillis: Long, co
 
     /**
      * 通过Cronet回调创建 [ResponseBody]
+     *
+     * Create [ResponseBody] via Cronet callback
      */
     @Throws(IOException::class)
     private fun createResponseBody(
@@ -100,8 +108,9 @@ class ResponseCallback(private val request: Request, readTimeoutMillis: Long, co
     }
 
     /**
-     * Returns the last header value for the given name, or null if the header isn't present.
      * 返回给定名称的最后一个值，如果没有值，则返回null。
+     *
+     * Returns the last header value for the given name, or null if the header isn't present.
      */
     private fun getLastHeaderValue(name: String, responseInfo: UrlResponseInfo): String? {
         return responseInfo.allHeaders[name]?.lastOrNull()

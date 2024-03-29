@@ -28,11 +28,7 @@ import okcronet.http.Response
 import org.chromium.net.UrlRequest
 import java.io.IOException
 
-/**
- * @author 李沐阳
- * @date 2024/1/23
- * @description
- */
+
 class CallCronetInterceptor(private val client: CronetClient) : Interceptor {
 
     var urlRequest: UrlRequest? = null

@@ -30,9 +30,9 @@ import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
 
 /**
- * @author 李沐阳
- * @date 2023/5/17
- * @description 'CompletableFuture' 的向后移植，可与旧版本 Android 配合使用。
+ * 'CompletableFuture' 的向后移植，可与旧版本 Android 配合使用。
+ *
+ * Backport of 'CompletableFuture' to work with older versions of Android.
  */
 internal class CompletableFutureCompat<V> : Future<V> {
     private sealed class Result<out V> {

@@ -45,7 +45,8 @@ class CronetClient private constructor(
     val cookieJar: CookieJar?,
     val interceptors: List<Interceptor>,
     /**
-     * 设置请求完成信息的监听
+     * 请求结束信息的监听.
+     * Listener on the request finished message.
      */
     val requestFinishedInfoListener: RequestFinishedInfo.Listener?
 ) : Call.Factory {
@@ -95,6 +96,12 @@ class CronetClient private constructor(
             return this
         }
 
+        /**
+         * Set callback executor service
+         *
+         * @param callbackExecutorService
+         * @return
+         */
         fun setCallbackExecutorService(callbackExecutorService: ExecutorService): Builder {
             this.callbackExecutorService = callbackExecutorService
             return this
@@ -114,15 +121,21 @@ class CronetClient private constructor(
             return this
         }
 
-
+        /**
+         * Set cookie
+         *
+         * @param cookieJar
+         * @return
+         */
         fun setCookieJar(cookieJar: CookieJar): Builder {
             this.cookieJar = cookieJar
             return this
         }
 
         /**
-         * Add interceptor
-         * 添加拦截器
+         * Add interceptor.
+         *
+         * 添加拦截器.
          *
          * @param interceptor
          * @return
