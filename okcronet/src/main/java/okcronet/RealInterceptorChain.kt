@@ -26,11 +26,7 @@ package okcronet
 import okcronet.http.Request
 import okcronet.http.Response
 
-/**
- * @author 李沐阳
- * @date 2024/1/23
- * @description
- */
+
 internal class RealInterceptorChain(
     private val call: RealCall,
     private val interceptors: List<Interceptor>,

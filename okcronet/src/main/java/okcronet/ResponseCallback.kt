@@ -56,7 +56,7 @@ class ResponseCallback(private val request: Request, readTimeoutMillis: Long, co
     /**
      * 通过Cronet回调创建 [Response]
      *
-     * Create [Response] via Cronet callback
+     * Create [Response] via Cronet callback.
      */
     @Throws(IOException::class)
     private fun createResponse(
@@ -78,7 +78,7 @@ class ResponseCallback(private val request: Request, readTimeoutMillis: Long, co
     /**
      * 通过Cronet回调创建 [ResponseBody]
      *
-     * Create [ResponseBody] via Cronet callback
+     * Create [ResponseBody] via Cronet callback.
      */
     @Throws(IOException::class)
     private fun createResponseBody(
