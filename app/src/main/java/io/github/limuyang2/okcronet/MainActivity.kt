@@ -68,7 +68,8 @@ class MainActivity : AppCompatActivity() {
             // 创建 CronetClient
             val cronetClient = CronetClient.Builder(cronetEngine)
                 .setCallTimeoutMillis(10_000)
-                .addInterceptor(LogInterceptor())
+                .addInterceptor(LogInterceptor()) // 添加日志拦截器
+                // （可选）请求完毕的回调，包含请求阶段各个时间的数据。一般用作性能监控使用
                 .setRequestFinishedInfoListener(object : RequestFinishedInfo.Listener(cacheExecutor) {
                     override fun onRequestFinished(requestInfo: RequestFinishedInfo?) {
                         if (requestInfo == null) return
