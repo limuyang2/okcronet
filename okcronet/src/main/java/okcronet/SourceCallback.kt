@@ -36,7 +36,6 @@ import java.io.IOException
 import java.io.OutputStream
 import java.nio.ByteBuffer
 import java.nio.charset.Charset
-import java.util.*
 import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.BlockingQueue
 import java.util.concurrent.Future
@@ -269,7 +268,7 @@ open class SourceCallback(readTimeoutMillis: Long, private val cookieJar: Cookie
             request.read(buffer)
             val result: CronetResult? = try {
                 cronetResults.poll(readTimeoutMillis, TimeUnit.MILLISECONDS)
-            } catch (e: InterruptedException) {
+            } catch (_: InterruptedException) {
                 Thread.currentThread().interrupt()
                 null
             }

@@ -93,7 +93,7 @@ class ResponseCallback(private val request: Request, readTimeoutMillis: Long, co
 
         val contentLength: Long = try {
             contentLengthString?.toLong() ?: -1
-        } catch (e: NumberFormatException) {
+        } catch (_: NumberFormatException) {
             -1
         }
 

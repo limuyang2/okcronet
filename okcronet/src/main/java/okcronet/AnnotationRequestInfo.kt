@@ -30,8 +30,22 @@ import org.chromium.net.RequestFinishedInfo
  * @date 2023/4/24
  * @description
  */
-class AnnotationRequestInfo internal constructor(val method: String, val priority: Int)
+class AnnotationRequestInfo internal constructor(
+    /**
+     * 请求方法
+     */
+    val method: String,
+    /**
+     * 优先级
+     */
+    val priority: Int,
+)
 
+/**
+ * 获取[AnnotationRequestInfo]
+ *
+ * @return
+ */
 fun RequestFinishedInfo.getAnnotationRequestInfo(): AnnotationRequestInfo? {
     return this.annotations.firstOrNull { it is AnnotationRequestInfo } as? AnnotationRequestInfo
 }

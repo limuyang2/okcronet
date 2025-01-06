@@ -51,7 +51,7 @@ internal fun  <T> Future<T>.getUninterruptibly(): T {
         while (true) {
             try {
                 return this.get()
-            } catch (e: InterruptedException) {
+            } catch (_: InterruptedException) {
                 interrupted = true
             }
         }
@@ -71,8 +71,8 @@ internal fun <V> Future<V>.getUninterruptibly(timeout: Long, unit: TimeUnit): V 
         while (true) {
             try {
                 // Future treats negative timeouts just like zero.
-                return this[remainingNanos, TimeUnit.NANOSECONDS]
-            } catch (e: InterruptedException) {
+                return this.get(remainingNanos, TimeUnit.NANOSECONDS)
+            } catch (_: InterruptedException) {
                 interrupted = true
                 remainingNanos = end - System.nanoTime()
             }
