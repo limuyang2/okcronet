@@ -26,6 +26,7 @@ Google 提供了一个 `okhttp` 到 `Cronet` 的桥接实现 [cronet-transport-f
 
 ## 引入 Cronet 库
 ### 中国大陆内
+[Google最新版本地址](https://maven.google.com/web/index.html?#org.chromium.net)
 ```
     // 示例，这是直接引入 Google 官方提供的 Cronet，并且包含本地 so 库的 lib
     implementation("org.chromium.net:cronet-api:119.6045.31")

@@ -24,6 +24,7 @@ implementation("io.github.limuyang2:okcronet:1.0.1")
 
 ## Cronet Library:
 ### Google Official Cronet:
+[Google Latest Version](https://maven.google.com/web/index.html?#org.chromium.net)
 ```
 implementation("org.chromium.net:cronet-api:119.6045.31")
 implementation("org.chromium.net:cronet-common:119.6045.31")
