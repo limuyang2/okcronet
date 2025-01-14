@@ -2,7 +2,7 @@
 类似 okhttp 的网络请求库，使用 Cronet 实现
 
 # Why
-Google 提供了一个 `okhttp` 到 `Cronet` 的桥接实现 [cronet-transport-for-okhttp](https://github.com/google/cronet-transport-for-okhttp/)，但是正如 `README` 中 `Incompatibilities`(不兼容性)内容中所描述的，你无法使用该源码来完善其功能。
+Google 提供了一个 `okhttp` 到 `Cronet` 的桥接实现 [cronet-transport-for-okhttp](https://github.com/google/cronet-transport-for-okhttp/)，但是正如 `README` 中[不兼容性]中所说的，由于无法修改okhttp中的代码，无法完善其功能，例如标头、超时处理等等。
 
 因此，okcronet 项目的目标是，解决使用 `Cronet` 实现的拦截器来提供的 HTTP3/QUIC 支持中存在的问题。
 
