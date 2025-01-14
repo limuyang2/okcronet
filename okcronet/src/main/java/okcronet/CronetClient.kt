@@ -45,6 +45,7 @@ class CronetClient private constructor(
     val writeTimeoutMillis: Long,
     val callTimeoutMillis: Long,
     val cookieJar: CookieJar?,
+    val isFollowRedirect: Boolean,
     val interceptors: List<Interceptor>,
     /**
      * 请求结束信息的监听.
@@ -64,6 +65,7 @@ class CronetClient private constructor(
         private var callTimeoutMillis: Long = 0 // No timeout
         private var callbackExecutorService: ExecutorService? = null
         private var cookieJar: CookieJar? = null
+        private var isFollowRedirect: Boolean = true
 
         private val interceptors: MutableList<Interceptor> = ArrayList()
 
@@ -98,6 +100,17 @@ class CronetClient private constructor(
                 "Write timeout mustn't be negative!"
             }
             this.writeTimeoutMillis = writeTimeoutMillis
+            return this
+        }
+
+        /**
+         * Set follow redirect.
+         * 设置跟随重定向。(默认true)
+         * @param bool
+         * @return
+         */
+        fun setFollowRedirect(bool: Boolean): Builder {
+            this.isFollowRedirect = bool
             return this
         }
 
@@ -223,6 +236,7 @@ class CronetClient private constructor(
                 writeTimeoutMillis,
                 callTimeoutMillis,
                 cookieJar,
+                isFollowRedirect,
                 interceptors,
                 requestFinishedInfoListener,
                 networkHandle,

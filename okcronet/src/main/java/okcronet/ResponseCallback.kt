@@ -40,8 +40,8 @@ import java.net.ProtocolException
  *
  * An implementation of the Cronet callback. Get [Response] type.
  */
-class ResponseCallback(private val request: Request, readTimeoutMillis: Long, cookieJar: CookieJar? = null) :
-    SourceCallback(readTimeoutMillis, cookieJar) {
+class ResponseCallback(private val request: Request, readTimeoutMillis: Long, cookieJar: CookieJar? = null, isFollowRedirect: Boolean) :
+    SourceCallback(readTimeoutMillis, cookieJar, isFollowRedirect) {
 
     /**
      * 注意：这里可能会发生阻塞，不建议在主线线程使用

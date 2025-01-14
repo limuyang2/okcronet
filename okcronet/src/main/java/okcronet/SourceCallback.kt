@@ -51,10 +51,12 @@ import java.util.concurrent.atomic.AtomicBoolean
  * This class completes the core data reception work.
  * This class can be inherited for implementing the desired data type.
  */
-open class SourceCallback(readTimeoutMillis: Long, private val cookieJar: CookieJar?) :
+open class SourceCallback(readTimeoutMillis: Long, private val cookieJar: CookieJar?, private val isFollowRedirect: Boolean) :
     UrlRequest.Callback() {
 
-    constructor(readTimeoutMillis: Long) : this(readTimeoutMillis, null)
+    constructor(readTimeoutMillis: Long) : this(readTimeoutMillis, null, true)
+
+    constructor(readTimeoutMillis: Long, cookieJar: CookieJar?) : this(readTimeoutMillis, cookieJar, true)
 
     /** BodySource 的 Future  */
     private val mSourceFuture = CompletableFutureCompat<Source>()
@@ -140,7 +142,9 @@ open class SourceCallback(readTimeoutMillis: Long, private val cookieJar: Cookie
     override fun onRedirectReceived(
         urlRequest: UrlRequest, urlResponseInfo: UrlResponseInfo, nextUrl: String
     ) {
-        urlRequest.followRedirect()
+        if (isFollowRedirect) {
+            urlRequest.followRedirect()
+        }
     }
 
     override fun onResponseStarted(urlRequest: UrlRequest, urlResponseInfo: UrlResponseInfo) {

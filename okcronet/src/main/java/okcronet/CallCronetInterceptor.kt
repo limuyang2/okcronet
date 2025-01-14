@@ -37,7 +37,7 @@ class CallCronetInterceptor(private val client: CronetClient) : Interceptor {
         val request = chain.request()
 
         // 构建 Cronet 的 Callback
-        val callback = ResponseCallback(request, client.readTimeoutMillis, client.cookieJar)
+        val callback = ResponseCallback(request, client.readTimeoutMillis, client.cookieJar, client.isFollowRedirect)
 
         // 构建 Cronet 的 UrlRequest.Builder
         val urlRequestBuilder: UrlRequest.Builder = client.cronetEngine.newUrlRequestBuilder(
