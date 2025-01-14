@@ -41,7 +41,7 @@ Google 官方提供的包不是最新的，如你想使用与`chromium`同步的
     // 如果你是直接使用 Google Play 的海外app，不需要考虑中国大陆的情况，可以直接使用 Google Play 提供的 so，不需要在APK中打包 so 文件
     // 参考链接 https://developer.android.com/develop/connectivity/cronet/start#kts
     //
-    implementation("com.google.android.gms:play-services-cronet:18.0.1")
+    implementation("com.google.android.gms:play-services-cronet:18.1.0")
 ```
 
 
