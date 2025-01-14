@@ -43,7 +43,10 @@ The usage is consistent with the usage of okhttp. There is just one more `Cronet
     // cronetEngine needs to maintain global uniqueness and cannot be created repeatedly
     private val cronetEngine: CronetEngine by lazy(LazyThreadSafetyMode.NONE) {
         val httpCacheDir =
-            File(this.applicationContext.externalCacheDir ?: this.applicationContext.cacheDir, "http")
+            File(
+                this.applicationContext.externalCacheDir ?: this.applicationContext.cacheDir,
+                "http"
+            )
 
         if (!httpCacheDir.exists()) {
             httpCacheDir.mkdir()
@@ -53,12 +56,13 @@ The usage is consistent with the usage of okhttp. There is just one more `Cronet
             NativeCronetEngineBuilderImpl(this.applicationContext)
         )
             .setStoragePath(httpCacheDir.absolutePath)
-            .enableHttpCache(CronetEngine.Builder.HTTP_CACHE_DISABLED, 1048576)
+            .enableHttpCache(CronetEngine.Builder.HTTP_CACHE_DISK, 1048576)
             .enableHttp2(true)
             .enableQuic(true)
             .setThreadPriority(-1)
             .enableBrotli(true)
             .build()
+    }
 ```
 
 ## GET

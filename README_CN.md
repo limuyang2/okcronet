@@ -55,7 +55,10 @@ Google 官方提供的包不是最新的，如你想使用与`chromium`同步的
     // cronetEngine 需要要保持全局唯一性，不可重复创建
     private val cronetEngine: CronetEngine by lazy(LazyThreadSafetyMode.NONE) {
         val httpCacheDir =
-            File(this.applicationContext.externalCacheDir ?: this.applicationContext.cacheDir, "http")
+            File(
+                this.applicationContext.externalCacheDir ?: this.applicationContext.cacheDir,
+                "http"
+            )
 
         if (!httpCacheDir.exists()) {
             httpCacheDir.mkdir()
@@ -65,12 +68,13 @@ Google 官方提供的包不是最新的，如你想使用与`chromium`同步的
             NativeCronetEngineBuilderImpl(this.applicationContext)
         )
             .setStoragePath(httpCacheDir.absolutePath)
-            .enableHttpCache(CronetEngine.Builder.HTTP_CACHE_DISABLED, 1048576)
+            .enableHttpCache(CronetEngine.Builder.HTTP_CACHE_DISK, 1048576)
             .enableHttp2(true)
             .enableQuic(true)
             .setThreadPriority(-1)
             .enableBrotli(true)
             .build()
+    }
 ```
 
 ## GET
