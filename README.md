@@ -24,12 +24,17 @@ implementation("io.github.limuyang2:okcronet:1.0.1")
 
 ## Cronet Library:
 ### Google Official Cronet:
+#### Way 1
 [Google Latest Version](https://maven.google.com/web/index.html?#org.chromium.net)
 ```
 implementation("org.chromium.net:cronet-api:119.6045.31")
 implementation("org.chromium.net:cronet-common:119.6045.31")
 implementation("org.chromium.net:cronet-embedded:119.6045.31")
 ```
+#### Way 2
+The packages officially provided by Google are not the latest. If you want to use the latest version synchronized with `chromium`, you can visit the official storage bucket to obtain it.[google cloud](https://console.cloud.google.com/storage/browser/chromium-cronet/android;tab=objects?inv=1&invt=Abmz0w&prefix=&forceOnObjectsSortingFiltering=true)
+
+
 ### Google Play Cronet:
 Reference link - [android develop](https://developer.android.com/develop/connectivity/cronet/start#kts)
 ```
