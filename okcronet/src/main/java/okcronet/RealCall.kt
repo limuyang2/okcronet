@@ -52,7 +52,7 @@ internal class RealCall(
 
     private val timeout: AsyncTimeout = object : AsyncTimeout() {
         override fun timedOut() {
-            cancel()
+            this@RealCall.cancel()
         }
     }
 
