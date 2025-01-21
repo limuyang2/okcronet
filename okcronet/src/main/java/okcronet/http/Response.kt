@@ -50,6 +50,17 @@ class Response internal constructor(
     val message: String
         get() = urlResponseInfo.httpStatusText
 
+    /** Returns the raw response headers.  */
+    val headers: Headers
+        get() {
+            val headers = Headers.Builder()
+            this.urlResponseInfo.allHeaders.forEach { map ->
+                map.value.forEach {
+                    headers.add(map.key, it)
+                }
+            }
+            return headers.build()
+        }
 
     fun newBuilder(): Builder = Builder(this)
 
