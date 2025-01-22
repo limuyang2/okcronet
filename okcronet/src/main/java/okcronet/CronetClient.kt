@@ -59,10 +59,10 @@ class CronetClient private constructor(
     override fun newCall(request: Request): Call = RealCall(this, request)
 
     class Builder(private val cronetEngine: CronetEngine) {
-        private var readTimeoutMillis: Long = 10_000L
-        private var writeTimeoutMillis: Long = 25_000L
+        private var readTimeoutMillis: Long = 5_000L
+        private var writeTimeoutMillis: Long = 5_000L
 
-        private var callTimeoutMillis: Long = 0 // No timeout
+        private var callTimeoutMillis: Long = 10_000L // No timeout
         private var callbackExecutorService: ExecutorService? = null
         private var cookieJar: CookieJar? = null
         private var isFollowRedirect: Boolean = true
