@@ -38,6 +38,24 @@ class Response internal constructor(
     val urlResponseInfo: UrlResponseInfo,
     val body: ResponseBody?,
 ) {
+    /**
+     * Returns the URL the response is for. This is the URL after following redirects, so it may not
+     * be the originally requested URL.
+     *
+     * 返回响应体所对应的 URL。这可能是跟踪重定向后的 URL，因此它可能不是最初请求的 URL。
+     */
+    val url: String
+        get() = urlResponseInfo.url
+
+    /**
+     * Returns the URL chain. The first entry is the originally requested URL; the following entries
+     * are redirects followed.
+     *
+     * 返回 URL 链。第一个条目是最初请求的 URL，之后的条目是遵循的重定向链接。
+     */
+    val urlChain: List<String>
+        get() = urlResponseInfo.urlChain
+
     /** Returns true if [.code] is in the range [200..300).  */
     val isSuccessful: Boolean
         get() = urlResponseInfo.httpStatusCode in 200..299
@@ -61,6 +79,34 @@ class Response internal constructor(
             }
             return headers.build()
         }
+
+    /**
+     * Returns {@code true} if the response came from the cache, including requests that were
+     * revalidated over the network before being retrieved from the cache.
+     *
+     * 如果响应来自缓存，包括在从缓存中检索之前通过网络重新验证的请求，则返回 {@code true}，否则为 {@code false}。
+     */
+    val wasCached: Boolean
+        get() = urlResponseInfo.wasCached()
+
+
+    /**
+     * Returns the protocol (for example 'quic/1+spdy/3') negotiated with the server. Returns an
+     * empty string if no protocol was negotiated, the protocol is not known, or when using plain
+     * HTTP or HTTPS.
+     *
+     * 返回与服务器协商的协议（例如 'quic/1+spdy3'）。如果未协商协议、协议未知，或者使用纯 HTTP 或 HTTPS 时，则返回空字符串。
+     */
+    val negotiatedProtocol: String?
+        get() = urlResponseInfo.negotiatedProtocol
+
+    /**
+     * Returns the proxy server that was used for the request.
+     *
+     * 返回用于请求的代理服务器。
+     */
+    val proxyServer: String?
+        get() = urlResponseInfo.proxyServer
 
     fun newBuilder(): Builder = Builder(this)
 
