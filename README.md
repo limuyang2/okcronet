@@ -19,7 +19,7 @@ For answers about `okhttp`'s support for HTTP3/QUIC, you can view this [issues](
 You need to reference both the OkCronet library and the Cronet library.
 ## okcronet Library:
 ```
-implementation("io.github.limuyang2:okcronet:1.0.2")
+implementation("io.github.limuyang2:okcronet:1.0.3")
 ```
 
 ## Cronet Library:
