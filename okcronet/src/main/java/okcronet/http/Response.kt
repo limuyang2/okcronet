@@ -26,6 +26,7 @@ package okcronet.http
 import okcronet.http.ResponseBody.Companion.asResponseBody
 import okio.Buffer
 import org.chromium.net.UrlResponseInfo
+import java.io.Closeable
 import java.io.IOException
 
 /**
@@ -37,7 +38,7 @@ class Response internal constructor(
     val request: Request,
     val urlResponseInfo: UrlResponseInfo,
     val body: ResponseBody?,
-) {
+) : Closeable {
     /**
      * Returns the URL the response is for. This is the URL after following redirects, so it may not
      * be the originally requested URL.
@@ -125,6 +126,10 @@ class Response internal constructor(
         peeked.request(byteCount)
         buffer.write(peeked, minOf(byteCount, peeked.buffer.size))
         return buffer.asResponseBody(body.contentType(), buffer.size)
+    }
+
+    override fun close() {
+        checkNotNull(body) { "response is not eligible for a body and must not be closed" }.close()
     }
 
     class Builder {
