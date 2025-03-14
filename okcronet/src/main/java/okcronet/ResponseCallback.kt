@@ -70,9 +70,7 @@ class ResponseCallback(private val request: Request, readTimeoutMillis: Long, co
             cronetResponseInfo,
             bodySource
         )
-        responseBuilder.body(responseBody)
-
-        return responseBuilder.build()
+        return responseBuilder.body(responseBody).build()
     }
 
     /**

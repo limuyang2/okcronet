@@ -54,9 +54,18 @@ class CronetClient private constructor(
     val requestFinishedInfoListener: RequestFinishedInfo.Listener?,
     val networkHandle: Long?,
     val annotationList: List<Any>?,
+    val dispatcher: Dispatcher = Dispatcher()
 ) : Call.Factory {
 
+    init {
+        this
+    }
+
     override fun newCall(request: Request): Call = RealCall(this, request)
+
+    fun cancelAll() {
+        dispatcher.cancelAll()
+    }
 
     class Builder(private val cronetEngine: CronetEngine) {
         private var readTimeoutMillis: Long = 5_000L

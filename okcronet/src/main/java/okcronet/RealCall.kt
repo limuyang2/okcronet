@@ -66,7 +66,7 @@ internal class RealCall(
         evaluateExecutionPreconditions()
         try {
             timeout.enter()
-
+            client.dispatcher.add(this)
             return toHookResponse(getResponseWithInterceptorChain())
         } catch (e: RuntimeException) {
             throw e
@@ -74,6 +74,7 @@ internal class RealCall(
             throw e
         } finally {
             timeout.exit()
+            client.dispatcher.finished(this)
         }
     }
 
@@ -83,19 +84,25 @@ internal class RealCall(
 
         client.responseCallbackExecutor.execute {
             try {
+                client.dispatcher.add(this)
+
                 val response = getResponseWithInterceptorChain()
                 timeout.exit()
+                client.dispatcher.finished(this)
                 responseCallback.onResponse(this, toHookResponse(response))
             } catch (e: ExecutionException) {
                 timeout.exit()
+                client.dispatcher.finished(this)
                 responseCallback.onFailure(this, IOException(e.cause ?: e))
                 return@execute
             } catch (e: IOException) {
                 timeout.exit()
+                client.dispatcher.finished(this)
                 responseCallback.onFailure(this, e)
                 return@execute
             } catch (e: Throwable) {
                 timeout.exit()
+                client.dispatcher.finished(this)
                 responseCallback.onFailure(this, IOException(e))
                 return@execute
             }
