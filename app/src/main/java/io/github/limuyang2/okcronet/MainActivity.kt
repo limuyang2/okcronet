@@ -52,11 +52,9 @@ class MainActivity : AppCompatActivity() {
             insets
         }
 
-
         viewBinding.btnTest.setOnClickListener {
             request()
         }
-
 
 
     }
@@ -102,7 +100,7 @@ class MainActivity : AppCompatActivity() {
 
             // 构建 Request
             val request = Request.Builder()
-                .url("https://www.fastly.com/quic-http-3")
+                .url("https://www.github.com")
                 .get()
                 .build()
 
