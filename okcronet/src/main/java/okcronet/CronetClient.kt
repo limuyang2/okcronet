@@ -63,6 +63,9 @@ class CronetClient private constructor(
 
     override fun newCall(request: Request): Call = RealCall(this, request)
 
+    /**
+     * Cancel all calls
+     */
     fun cancelAll() {
         dispatcher.cancelAll()
     }
