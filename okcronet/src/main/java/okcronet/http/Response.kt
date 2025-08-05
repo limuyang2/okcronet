@@ -109,6 +109,12 @@ class Response internal constructor(
     val proxyServer: String?
         get() = urlResponseInfo.proxyServer
 
+    /**
+     * Returns a minimum count of bytes received from the network to process this request.
+     */
+    val receivedByteCount: Long
+        get() = urlResponseInfo.receivedByteCount
+
     fun newBuilder(): Builder = Builder(this)
 
     /**

@@ -24,12 +24,18 @@
 package okcronet.http
 
 import okcronet.http.MediaType.Companion.toMediaType
+import okcronet.http.MultipartBody.Companion.ALTERNATIVE
+import okcronet.http.MultipartBody.Companion.DIGEST
+import okcronet.http.MultipartBody.Companion.FORM
+import okcronet.http.MultipartBody.Companion.MIXED
+import okcronet.http.MultipartBody.Companion.PARALLEL
 import okio.Buffer
 import okio.BufferedSink
 import okio.ByteString
 import okio.ByteString.Companion.encodeUtf8
 import java.io.IOException
-import java.util.*
+import java.util.Collections
+import java.util.UUID
 
 /**
  * @author 李沐阳
@@ -45,8 +51,7 @@ class MultipartBody internal constructor(
     private val boundary: String
         get() = boundaryByteString.utf8()
 
-    private val contentType: MediaType =
-        "$type; boundary=$boundary".toMediaType()
+    private val contentType: MediaType = "$type; boundary=$boundary".toMediaType()
 
     private var contentLength = -1L
 
@@ -80,7 +85,7 @@ class MultipartBody internal constructor(
             val headers = element.headers
             val body = element.body
 
-            sink!!.write(DASHDASH)
+            sink.write(DASHDASH)
             sink.write(boundaryByteString)
             sink.write(CRLF)
 
@@ -122,7 +127,7 @@ class MultipartBody internal constructor(
             sink.write(CRLF)
         }
 
-        sink!!.write(DASHDASH)
+        sink.write(DASHDASH)
         sink.write(boundaryByteString)
         sink.write(DASHDASH)
         sink.write(CRLF)
@@ -172,7 +177,7 @@ class MultipartBody internal constructor(
         /** Assemble the specified parts into a request body. */
         fun build(): MultipartBody {
             check(parts.isNotEmpty()) { "Multipart body must have at least one part." }
-            return MultipartBody(boundary, type, parts)
+            return MultipartBody(boundary, type, Collections.unmodifiableList(parts))
         }
     }
 
@@ -184,9 +189,12 @@ class MultipartBody internal constructor(
         companion object {
 
             @JvmStatic
-            fun create(headers: Headers, body: RequestBody): Part {
-                require(headers["Content-Type"] == null) { "Unexpected header: Content-Type" }
-                require(headers["Content-Length"] == null) { "Unexpected header: Content-Length" }
+            fun create(body: RequestBody): Part = create(null, body)
+
+            @JvmStatic
+            fun create(headers: Headers?, body: RequestBody): Part {
+                require(headers?.get("Content-Type") == null) { "Unexpected header: Content-Type" }
+                require(headers?.get("Content-Length") == null) { "Unexpected header: Content-Length" }
                 return Part(headers, body)
             }
 

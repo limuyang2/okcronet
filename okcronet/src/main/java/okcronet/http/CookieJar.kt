@@ -60,6 +60,7 @@ interface CookieJar {
         /** A cookie jar that never accepts any cookies. */
         @JvmField
         val NO_COOKIES: CookieJar = NoCookies()
+
         private class NoCookies : CookieJar {
             override fun save(url: HttpUrl, cookies: List<Cookie>) {
             }

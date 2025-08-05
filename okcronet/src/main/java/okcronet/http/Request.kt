@@ -28,6 +28,8 @@ import okcronet.http.RequestBody.Companion.EMPTY_REQUEST_BODY
 import org.chromium.net.UrlRequest
 import java.io.IOException
 import java.net.URL
+import kotlin.reflect.KClass
+import kotlin.reflect.cast
 
 /**
  * @author 李沐阳
@@ -41,7 +43,7 @@ class Request private constructor(
     val body: RequestBody?,
     val priority: Int,
     val disableCache: Boolean,
-    internal val tags: Map<Class<*>, Any>
+    internal val tags: Map<KClass<*>, Any>
 ) {
 
     val isHttps: Boolean
@@ -51,14 +53,30 @@ class Request private constructor(
 
     fun headers(name: String): List<String> = headers.values(name)
 
+    /** Returns the tag attached with [T] as a key, or null if no tag is attached with that key. */
+    @JvmName("reifiedTag")
+    inline fun <reified T : Any> tag(): T? = tag(T::class)
 
-    fun tag(): Any? = tag(Any::class.java)
+    /** Returns the tag attached with [type] as a key, or null if no tag is attached with that key. */
+    fun <T : Any> tag(type: KClass<T>): T? = type.java.cast(tags[type])
+
+    /**
+     * Returns the tag attached with `Object.class` as a key, or null if no tag is attached with
+     * that key.
+     *
+     * Prior to OkHttp 3.11, this method never returned null if no tag was attached. Instead it
+     * returned either this request, or the request upon which this request was derived with
+     * [newBuilder].
+     *
+     * @suppress this method breaks Dokka! https://github.com/Kotlin/dokka/issues/2473
+     */
+    fun tag(): Any? = tag<Any>()
 
     /**
      * Returns the tag attached with [type] as a key, or null if no tag is attached with that
      * key.
      */
-    fun <T> tag(type: Class<out T>): T? = type.cast(tags[type])
+    fun <T> tag(type: Class<out T>): T? = tag(type.kotlin)
 
     fun newBuilder(): Builder = Builder(this)
 
@@ -71,7 +89,7 @@ class Request private constructor(
         private  var disableCache: Boolean = false
 
         /** A mutable map of tags, or an immutable empty map if we don't have any. */
-        private var tags: MutableMap<Class<*>, Any> = mutableMapOf()
+        internal var tags: Map<KClass<*>, Any> = mapOf<KClass<*>, Any>()
 
         constructor() {
             this.method = "GET"
@@ -82,11 +100,11 @@ class Request private constructor(
             this.url = request.url
             this.method = request.method
             this.body = request.body
-            this.tags = if (request.tags.isEmpty()) {
-                mutableMapOf()
-            } else {
-                request.tags.toMutableMap()
-            }
+            this.tags =
+                when {
+                    request.tags.isEmpty() -> mapOf()
+                    else -> request.tags.toMutableMap()
+                }
             this.headers = request.headers.newBuilder()
         }
 
@@ -200,8 +218,44 @@ class Request private constructor(
             this.body = body
         }
 
+        /**
+         * Attaches [tag] to the request using [T] as a key. Tags can be read from a request using
+         * [Request.tag]. Use null to remove any existing tag assigned for [T].
+         *
+         * Use this API to attach timing, debugging, or other application data to a request so that
+         * you may read it in interceptors, event listeners, or callbacks.
+         */
+        @JvmName("reifiedTag")
+        inline fun <reified T : Any> tag(tag: T?): Builder = tag(T::class, tag)
+
+        /**
+         * Attaches [tag] to the request using [type] as a key. Tags can be read from a request using
+         * [Request.tag]. Use null to remove any existing tag assigned for [type].
+         *
+         * Use this API to attach timing, debugging, or other application data to a request so that
+         * you may read it in interceptors, event listeners, or callbacks.
+         */
+        fun <T : Any> tag(
+            type: KClass<T>,
+            tag: T?,
+        ): Builder =
+            apply {
+                if (tag == null) {
+                    if (tags.isNotEmpty()) {
+                        (tags as MutableMap).remove(type)
+                    }
+                } else {
+                    val mutableTags =
+                        when {
+                            tags.isEmpty() -> mutableMapOf<KClass<*>, Any>().also { tags = it }
+                            else -> tags as MutableMap<KClass<*>, Any>
+                        }
+                    mutableTags[type] = type.cast(tag)
+                }
+            }
+
         /** Attaches [tag] to the request using `Object.class` as a key. */
-        fun tag(tag: Any?): Builder = tag(Any::class.java, tag)
+         fun tag(tag: Any?): Builder = tag(Any::class, tag)
 
         /**
          * Attaches [tag] to the request using [type] as a key. Tags can be read from a
@@ -210,17 +264,7 @@ class Request private constructor(
          * Use this API to attach timing, debugging, or other application data to a request so that
          * you may read it in interceptors, event listeners, or callbacks.
          */
-        fun <T> tag(type: Class<in T>, tag: T?) = apply {
-            if (tag == null) {
-                tags.remove(type)
-            } else {
-                if (tags.isEmpty()) {
-                    tags = mutableMapOf()
-                }
-                tags[type] =
-                    type.cast(tag)!! // Force-unwrap due to lack of contracts on Class#cast()
-            }
-        }
+         fun <T> tag(type: Class<in T>, tag: T?) = tag(type.kotlin, tag)
 
         fun build(): Request {
             handleHeader()
