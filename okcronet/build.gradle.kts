@@ -24,12 +24,12 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
     }
 
     kotlin {
-        jvmToolchain(17)
+        jvmToolchain(21)
     }
 
     publishing {
@@ -59,20 +59,24 @@ var secretKeyRingFile = ""//生成的secring.gpg文件目录
 
 val localProperties: File = project.rootProject.file("local.properties")
 
-if (localProperties.exists()) {
-    println("Found secret props file, loading props")
-    val properties = Properties()
+try {
+    if (localProperties.exists()) {
+        println("Found secret props file, loading props")
+        val properties = Properties()
 
-    InputStreamReader(FileInputStream(localProperties), Charsets.UTF_8).use { reader ->
-        properties.load(reader)
+        InputStreamReader(FileInputStream(localProperties), Charsets.UTF_8).use { reader ->
+            properties.load(reader)
+        }
+        signingKeyId = properties.getProperty("signing.keyId")
+        signingPassword = properties.getProperty("signing.password")
+        secretKeyRingFile = properties.getProperty("signing.secretKeyRingFile")
+
+    } else {
+        println("No props file, loading env vars")
     }
-    signingKeyId = properties.getProperty("signing.keyId")
-    signingPassword = properties.getProperty("signing.password")
-    secretKeyRingFile = properties.getProperty("signing.secretKeyRingFile")
-
-} else {
-    println("No props file, loading env vars")
+} catch (_: Exception) {
 }
+
 
 afterEvaluate {
 
