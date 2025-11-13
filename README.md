@@ -38,7 +38,7 @@ The packages officially provided by Google are not the latest. If you want to us
 ### Google Play Cronet:
 Reference link - [android develop](https://developer.android.com/develop/connectivity/cronet/start#kts)
 ```
-implementation("com.google.android.gms:play-services-cronet:18.1.0")
+implementation("com.google.android.gms:play-services-cronet:18.1.1")
 ```
 
 # Using
