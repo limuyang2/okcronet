@@ -36,7 +36,6 @@ class MainActivity : AppCompatActivity() {
             .enableHttpCache(CronetEngine.Builder.HTTP_CACHE_DISABLED, 1048576)
             .enableHttp2(true)
             .enableQuic(true)
-            .setThreadPriority(-1)
             .enableBrotli(true)
             .build()
     }
