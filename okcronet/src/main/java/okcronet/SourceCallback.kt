@@ -27,7 +27,13 @@ import okcronet.http.Cookie
 import okcronet.http.CookieJar
 import okcronet.http.Headers
 import okcronet.http.HttpUrl.Companion.toHttpUrl
-import okio.*
+import okio.Buffer
+import okio.BufferedSink
+import okio.Source
+import okio.Timeout
+import okio.buffer
+import okio.sink
+import okio.use
 import org.chromium.net.CronetException
 import org.chromium.net.UrlRequest
 import org.chromium.net.UrlResponseInfo
@@ -37,7 +43,6 @@ import java.io.OutputStream
 import java.nio.ByteBuffer
 import java.nio.charset.Charset
 import java.util.concurrent.ArrayBlockingQueue
-import java.util.concurrent.BlockingQueue
 import java.util.concurrent.Future
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
@@ -217,121 +222,166 @@ open class SourceCallback(readTimeoutMillis: Long, private val cookieJar: Cookie
         private val readTimeoutMillis: Long
     ) : Source {
 
-        /**
-         * 一种内部的、阻塞的、线程安全的方法，用于在回调方法和 bodySourceFuture 之间传递数据。
-         *
-         *  容量为 2: - 最多一个用于读取结果，最多 1 个插槽用于取消信号，这保证了所有插入都是非阻塞的。
-         *
-         * An internal, blocking, thread-safe method for passing data between callback methods and bodySourceFuture.
-         *
-         * Capacity is 2: -At most one slot is used to read the result, and at most 1 slot is used to cancel the signal,
-         * which ensures that all insertions are non-blocking.
-         */
-        private val cronetResults: BlockingQueue<CronetResult> = ArrayBlockingQueue(2)
+        // bufferRead: 当前供 sink 读取的数据（消费者用）
+        private var bufferRead: ByteBuffer? = ByteBuffer.allocateDirect(BUFFER_SIZE).apply { flip() } // 初始为空（limit=0）
 
-        /**
-         * 请求是否已完成且响应是否已完全读取。
-         *
-         * Whether the request has completed and the response has been fully read.
-         */
+        // bufferFill: 当前供 Cronet 填充的数据（生产者用）
+        private var bufferFill: ByteBuffer? = ByteBuffer.allocateDirect(BUFFER_SIZE)
+
+        // 队列用于传递“填满数据的 Buffer”或者“错误/结束信号”
+        // 容量设为 1 即可，因为我们要严格控制流转：Fill 好了才能给 Read 用
+        private val filledBuffers = ArrayBlockingQueue<CronetResult>(1)
+
         private val finished = AtomicBoolean(false)
+        private val canceled = AtomicBoolean(false)
+        @Volatile private var closed = false
+
+        // 标记是否已经发出了网络读取请求
+        private var isReadingNetwork = false
+
+        init {
+            // 初始化时，立即触发第一次网络读取
+            requestReadNextChunk()
+        }
 
         /**
-         * 请求是否已经取消。
-         *
-         * Whether the request has been canceled.
+         * 触发网络读取。只有当 bufferFill 处于可用状态时才调用。
          */
-        private val canceled = AtomicBoolean(false)
+        private fun requestReadNextChunk() {
+            if (finished.get() || closed || canceled.get()) return
 
-        private var buffer: ByteBuffer? = ByteBuffer.allocateDirect(CRONET_BYTE_BUFFER_CAPACITY)
+            // 确保 bufferFill 是清空状态，准备接收数据
+            bufferFill?.clear()
 
-        /** 是否已调用 close() 方法。 */
-        @Volatile
-        private var closed = false
+            // 标记正在读取，防止重复触发
+            isReadingNetwork = true
+            try {
+                request.read(bufferFill)
+            } catch (e: Exception) {
+                // 如果同步抛出异常（极少见），手动入队失败结果
+                filledBuffers.offer(CronetResult.Failed(CronetExceptionImplWrapper(e)))
+            }
+        }
 
         @Throws(IOException::class)
         override fun read(sink: Buffer, byteCount: Long): Long {
-            if (canceled.get()) {
-                throw IOException("The request was canceled!")
-            }
+            if (canceled.get()) throw IOException("The request was canceled!")
+            check(!closed) { "CronetBodySource closed" }
 
-            // Using IAE instead of NPE (checkNotNull) for okio.RealBufferedSource consistency
-            require(byteCount >= 0) {
-                "byteCount < 0: $byteCount"
-            }
-            check(!closed) {
-                "CronetBodySource closed"
-            }
+            var currentBuf = bufferRead
 
-            if (finished.get()) {
-                return -1
-            }
-            if (byteCount < (buffer?.limit() ?: 0)) {
-                buffer?.limit(byteCount.toInt())
-            }
-            request.read(buffer)
-            val result: CronetResult? = try {
-                cronetResults.poll(readTimeoutMillis, TimeUnit.MILLISECONDS)
-            } catch (_: InterruptedException) {
-                Thread.currentThread().interrupt()
-                null
-            }
-            if (result == null) {
-                // read cronetResults.poll() 被打断或超时.
-                // The read cronetResults.poll() is interrupted or timed out.
-                request.cancel()
-                throw CronetTimeoutException()
-            }
-            return when (result) {
-                is CronetResult.Canceled -> {
-                    // 已取消的标志已由外部 onCanceled 方法调用 canceled() 设置，因此此处不设置它。
-                    buffer = null
-                    throw IOException("The request was canceled!")
+            // 1. 如果当前读取缓冲区没数据了，尝试交换缓冲区
+            if (currentBuf == null || !currentBuf.hasRemaining()) {
+
+                // 如果 buffer 耗尽了，且标记为已完成，说明真正结束了
+                if (finished.get()) {
+                    return -1
                 }
 
-                is CronetResult.Failed -> {
-                    finished.set(true)
-                    buffer = null
-                    throw IOException(result.exception)
+                // 此时 bufferRead 已经空了，它可以变成 bufferFill 去接收下一次数据
+                // 但为了避免多线程竞争，我们先暂存这个空 buffer，等拿到新数据后再赋值给 member field
+                val emptyBuffer = currentBuf
+                emptyBuffer?.clear() // 重置状态
+
+                // 阻塞等待 Cronet 填好的数据
+                val result = try {
+                    filledBuffers.poll(readTimeoutMillis, TimeUnit.MILLISECONDS)
+                } catch (_: InterruptedException) {
+                    Thread.currentThread().interrupt()
+                    null
                 }
 
-                is CronetResult.Success -> {
-                    finished.set(true)
-                    buffer = null
-                    -1
+                if (result == null) {
+                    request.cancel()
+                    throw CronetTimeoutException()
                 }
 
-                is CronetResult.ReadCompleted -> {
-                    result.buffer.flip()
-                    val bytesWritten = sink.write(result.buffer)
-                    result.buffer.clear()
-                    bytesWritten.toLong()
+                when (result) {
+                    is CronetResult.ReadCompleted -> {
+                        // 1. 拿到了新数据，它原本是 bufferFill
+                        val newReadBuffer = result.buffer
+                        newReadBuffer.flip() // 切换为读模式
+
+                        // 2. 将刚才空的 bufferRead 变成新的 bufferFill
+                        // 注意：这里完成了“双缓冲交换”
+                        // 之前的 bufferFill 变成了现在的 bufferRead
+                        // 之前的 bufferRead 变成了现在的 bufferFill
+                        this.bufferRead = newReadBuffer
+                        this.bufferFill = emptyBuffer
+
+                        currentBuf = newReadBuffer
+
+                        // 3. 立即触发下一次预取（Prefetch），让 Cronet 去填这个空的 bufferFill
+                        // 这样在我们消费 bufferRead 的时候，网络就在并行下载了
+                        requestReadNextChunk()
+                    }
+                    is CronetResult.Success -> {
+                        finished.set(true)
+                        cleanUp()
+                        return -1
+                    }
+                    is CronetResult.Failed -> {
+                        finished.set(true)
+                        cleanUp()
+                        throw IOException(result.exception)
+                    }
+                    is CronetResult.Canceled -> {
+                        cleanUp()
+                        throw IOException("The request was canceled!")
+                    }
                 }
             }
+
+            // 2. 读取逻辑
+            val validBuf = currentBuf
+
+            val bytesToRead = minOf(byteCount, validBuf.remaining().toLong()).toInt()
+
+            if (bytesToRead > 0) {
+                val originalLimit = validBuf.limit()
+                validBuf.limit(validBuf.position() + bytesToRead)
+                sink.write(validBuf)
+                validBuf.limit(originalLimit)
+            }
+
+            return bytesToRead.toLong()
         }
 
-        override fun timeout(): Timeout {
-            // TODO(danstahr): This should likely respect the OkHttp timeout somehow
-            return Timeout.NONE
-        }
-
-        override fun close() {
-            if (closed) {
-                return
-            }
-            closed = true
-            if (!finished.get()) {
-                request.cancel()
-            }
-        }
-
+        // 将结果注入队列，供 read() 方法消费
         fun add(callbackResult: CronetResult) {
-            cronetResults.add(callbackResult)
+            // 无论成功失败，都放入队列解除 read() 的阻塞
+            // 如果队列满了（理论上不应该，因为我们是严格的 ping-pong），offer 会返回 false
+            if (!filledBuffers.offer(callbackResult)) {
+                // Should not happen in strict ping-pong
+            }
         }
 
         fun canceled() {
-            canceled.set(true)
+            if (canceled.getAndSet(true)) return
+
+            // 即使取消了，也要给队列塞个结果，防止 read() 死锁
+            filledBuffers.offer(CronetResult.Canceled)
+
+            cleanUp()
         }
+
+        override fun close() {
+            if (closed) return
+            closed = true
+            if (!finished.get()) request.cancel()
+            // 清理资源
+            cleanUp()
+        }
+
+        private fun cleanUp() {
+            bufferRead = null
+            bufferFill = null
+        }
+
+        override fun timeout(): Timeout = Timeout.NONE
+
+        // 为了处理 Exception 包装的简易类，实际项目中可能直接传 Exception 即可
+        class CronetExceptionImplWrapper(e: Throwable) : CronetException(e.message, e)
 
         sealed class CronetResult {
             class ReadCompleted(val buffer: ByteBuffer) : CronetResult()
@@ -342,18 +392,15 @@ open class SourceCallback(readTimeoutMillis: Long, private val cookieJar: Cookie
 
             data object Canceled : CronetResult()
         }
+
+        companion object {
+            // 32KB
+            private const val BUFFER_SIZE = 32 * 1024
+        }
     }
 
 
     companion object {
-        /**
-         * The byte buffer capacity for reading Cronet response bodies. Each response callback will
-         * allocate its own buffer of this size once the response starts being processed.
-         *
-         * 用于读取 Cronet 响应主体的字节缓冲区容量。一旦开始处理响应，每个响应回调将分配自己的此大小的缓冲区。
-         */
-        private const val CRONET_BYTE_BUFFER_CAPACITY = 32 * 1024
-
 
         /**
          * 扩展方法
