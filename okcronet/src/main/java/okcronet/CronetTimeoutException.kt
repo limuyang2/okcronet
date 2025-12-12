@@ -25,4 +25,4 @@ package okcronet
 
 import java.io.IOException
 
-class CronetTimeoutException : IOException("Read time out")
+class CronetTimeoutException : IOException("Time out")
