@@ -270,7 +270,7 @@ open class SourceCallback(readTimeoutMillis: Long, private val cookieJar: Cookie
 
             var currentBuf = bufferRead
 
-            // 1. 如果当前读取缓冲区没数据了，尝试交换缓冲区
+            // 如果当前读取缓冲区没数据了，尝试交换缓冲区
             if (currentBuf == null || !currentBuf.hasRemaining()) {
 
                 // 如果 buffer 耗尽了，且标记为已完成，说明真正结束了
@@ -298,11 +298,11 @@ open class SourceCallback(readTimeoutMillis: Long, private val cookieJar: Cookie
 
                 when (result) {
                     is CronetResult.ReadCompleted -> {
-                        // 1. 拿到了新数据，它原本是 bufferFill
+                        // 拿到了新数据，它原本是 bufferFill
                         val newReadBuffer = result.buffer
                         newReadBuffer.flip() // 切换为读模式
 
-                        // 2. 将刚才空的 bufferRead 变成新的 bufferFill
+                        // 将刚才空的 bufferRead 变成新的 bufferFill
                         // 注意：这里完成了“双缓冲交换”
                         // 之前的 bufferFill 变成了现在的 bufferRead
                         // 之前的 bufferRead 变成了现在的 bufferFill
@@ -311,7 +311,7 @@ open class SourceCallback(readTimeoutMillis: Long, private val cookieJar: Cookie
 
                         currentBuf = newReadBuffer
 
-                        // 3. 立即触发下一次预取（Prefetch），让 Cronet 去填这个空的 bufferFill
+                        // 立即触发下一次预取（Prefetch），让 Cronet 去填这个空的 bufferFill
                         // 这样在我们消费 bufferRead 的时候，网络就在并行下载了
                         requestReadNextChunk()
                     }
@@ -380,7 +380,6 @@ open class SourceCallback(readTimeoutMillis: Long, private val cookieJar: Cookie
 
         override fun timeout(): Timeout = Timeout.NONE
 
-        // 为了处理 Exception 包装的简易类，实际项目中可能直接传 Exception 即可
         class CronetExceptionImplWrapper(e: Throwable) : CronetException(e.message, e)
 
         sealed class CronetResult {
