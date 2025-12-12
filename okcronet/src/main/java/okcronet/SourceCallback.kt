@@ -256,7 +256,7 @@ open class SourceCallback(readTimeoutMillis: Long, private val cookieJar: Cookie
             // 标记正在读取，防止重复触发
             isReadingNetwork = true
             try {
-                request.read(bufferFill)
+                bufferFill?.let { request.read(it) }
             } catch (e: Exception) {
                 // 如果同步抛出异常（极少见），手动入队失败结果
                 filledBuffers.offer(CronetResult.Failed(CronetExceptionImplWrapper(e)))
