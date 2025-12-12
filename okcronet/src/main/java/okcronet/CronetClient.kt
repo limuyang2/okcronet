@@ -53,6 +53,7 @@ class CronetClient private constructor(
      */
     val requestFinishedInfoListener: RequestFinishedInfo.Listener?,
     val networkHandle: Long?,
+    val trafficStatsTag: Int?,
     val annotationList: List<Any>?,
     val dispatcher: Dispatcher = Dispatcher()
 ) : Call.Factory {
@@ -83,6 +84,7 @@ class CronetClient private constructor(
 
         private var requestFinishedInfoListener: RequestFinishedInfo.Listener? = null
         private var networkHandle: Long? = null
+        private var trafficStatsTag: Int? = null
         private var annotationList: MutableList<Any>? = null
 
         /**
@@ -92,12 +94,11 @@ class CronetClient private constructor(
          * @param readTimeoutMillis 毫秒
          * @return
          */
-        fun setReadTimeoutMillis(readTimeoutMillis: Long): Builder {
+        fun setReadTimeoutMillis(readTimeoutMillis: Long) = apply {
             check(readTimeoutMillis >= 0) {
                 "Read timeout mustn't be negative!"
             }
             this.readTimeoutMillis = readTimeoutMillis
-            return this
         }
 
         /**
@@ -107,12 +108,11 @@ class CronetClient private constructor(
          * @param writeTimeoutMillis 毫秒
          * @return
          */
-        fun setWriteTimeoutMillis(writeTimeoutMillis: Long): Builder {
+        fun setWriteTimeoutMillis(writeTimeoutMillis: Long) = apply {
             check(writeTimeoutMillis >= 0) {
                 "Write timeout mustn't be negative!"
             }
             this.writeTimeoutMillis = writeTimeoutMillis
-            return this
         }
 
         /**
@@ -121,9 +121,8 @@ class CronetClient private constructor(
          * @param bool
          * @return
          */
-        fun setFollowRedirect(bool: Boolean): Builder {
+        fun setFollowRedirect(bool: Boolean) = apply {
             this.isFollowRedirect = bool
-            return this
         }
 
         /**
@@ -132,9 +131,8 @@ class CronetClient private constructor(
          * @param callbackExecutorService
          * @return
          */
-        fun setCallbackExecutorService(callbackExecutorService: ExecutorService): Builder {
+        fun setCallbackExecutorService(callbackExecutorService: ExecutorService) = apply {
             this.callbackExecutorService = callbackExecutorService
-            return this
         }
 
         /**
@@ -143,12 +141,11 @@ class CronetClient private constructor(
          * @param callTimeoutMillis milliseconds 毫秒
          * @return
          */
-        fun setCallTimeoutMillis(callTimeoutMillis: Long): Builder {
+        fun setCallTimeoutMillis(callTimeoutMillis: Long) = apply {
             check(callTimeoutMillis >= 0) {
                 "Call timeout mustn't be negative!"
             }
             this.callTimeoutMillis = callTimeoutMillis
-            return this
         }
 
         /**
@@ -157,9 +154,8 @@ class CronetClient private constructor(
          * @param cookieJar
          * @return
          */
-        fun setCookieJar(cookieJar: CookieJar): Builder {
+        fun setCookieJar(cookieJar: CookieJar) = apply {
             this.cookieJar = cookieJar
-            return this
         }
 
         /**
@@ -170,9 +166,8 @@ class CronetClient private constructor(
          * @param interceptor
          * @return
          */
-        fun addInterceptor(interceptor: Interceptor): Builder {
+        fun addInterceptor(interceptor: Interceptor) = apply {
             interceptors += interceptor
-            return this
         }
 
         /**
@@ -193,9 +188,8 @@ class CronetClient private constructor(
          * @param listener the listener for finished requests.
          * @return the builder to facilitate chaining.
          */
-        fun setRequestFinishedInfoListener(listener: RequestFinishedInfo.Listener?): Builder {
+        fun setRequestFinishedInfoListener(listener: RequestFinishedInfo.Listener?) = apply {
             requestFinishedInfoListener = listener
-            return this
         }
 
         /**
@@ -207,7 +201,7 @@ class CronetClient private constructor(
          * Only available starting from Android Marshmallow.
          *
          * 将请求绑定到指定的网络句柄。Cronet将仅使用与此句柄关联的网络发送此请求。如果此网络断开连接，请求将
-         * 失败，确切的错误将取决于网络断开时请求处理的阶段。
+         * 失败，确切的错误将取决于网络断开时请求处理的阶段。[android.net.Network.getNetworkHandle]
          *
          * 仅从 Android M开始可用。
          *
@@ -216,9 +210,28 @@ class CronetClient private constructor(
          * @return the builder to facilitate chaining.
          */
         @RequiresApi(Build.VERSION_CODES.M)
-        fun bindToNetwork(networkHandle: Long): Builder {
+        fun bindToNetwork(networkHandle: Long) = apply {
             this.networkHandle = networkHandle
-            return this
+        }
+
+        /**
+         * Sets {@link android.net.TrafficStats} tag to use when accounting socket traffic caused by
+         * this request. See {@link android.net.TrafficStats} for more information. If no tag is set
+         * (e.g. this method isn't called), then Android accounts for the socket traffic caused by
+         * this request as if the tag value were set to 0. <p> <b>NOTE:</b>Setting a tag disallows
+         * sharing of sockets with requests with other tags, which may adversely effect performance
+         * by prohibiting connection sharing. In other words use of multiplexed sockets (e.g. HTTP/2
+         * and QUIC) will only be allowed if all requests have the same socket tag.
+         *
+         * @param tag the tag value used to when accounting for socket traffic caused by this
+         *         request.
+         * Tags between 0xFFFFFF00 and 0xFFFFFFFF are reserved and used internally by system
+         * services like {@link android.app.DownloadManager} when performing traffic on behalf of an
+         * application.
+         * @return the builder to facilitate chaining.
+         */
+        fun setTrafficStatsTag(tag: Int) = apply {
+            trafficStatsTag = tag
         }
 
         /**
@@ -232,11 +245,10 @@ class CronetClient private constructor(
          * {@link RequestFinishedInfo}.
          * @return the builder to facilitate chaining.
          */
-        fun addRequestAnnotation(annotation: Any): Builder {
+        fun addRequestAnnotation(annotation: Any) = apply {
             (annotationList ?: ArrayList<Any>().apply {
                 annotationList = this
             }).add(annotation)
-            return this
         }
 
 
@@ -252,6 +264,7 @@ class CronetClient private constructor(
                 interceptors,
                 requestFinishedInfoListener,
                 networkHandle,
+                trafficStatsTag,
                 annotationList
             )
         }

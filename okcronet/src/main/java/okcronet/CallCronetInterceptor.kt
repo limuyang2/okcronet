@@ -50,6 +50,10 @@ class CallCronetInterceptor(private val client: CronetClient) : Interceptor {
             .addRequestAnnotation(AnnotationRequestInfo(request.method, request.priority))
             .setRequestFinishedListener(client.requestFinishedInfoListener)
 
+        client.trafficStatsTag?.let {
+            urlRequestBuilder.setTrafficStatsTag(it)
+        }
+
         client.networkHandle?.let {
             urlRequestBuilder.bindToNetwork(it)
         }
