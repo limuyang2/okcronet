@@ -99,7 +99,7 @@ class MainActivity : AppCompatActivity() {
 
             // 构建 Request
             val request = Request.Builder()
-                .url("https://www.github.com")
+                .url("https://http3check.net/")
                 .get()
                 .build()
 
