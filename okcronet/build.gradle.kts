@@ -24,12 +24,12 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_21
-        targetCompatibility = JavaVersion.VERSION_21
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
     kotlin {
-        jvmToolchain(21)
+        jvmToolchain(17)
     }
 
     publishing {
@@ -50,7 +50,7 @@ dependencies {
 
 //---------- maven upload info -----------------------------------
 
-val versionName = "1.0.7"
+val versionName = "1.0.8"
 
 var signingKeyId = ""//签名的密钥后8位
 var signingPassword = ""//签名设置的密码
