@@ -56,10 +56,9 @@ internal class UploadBodyDataSink : Sink {
     private val isClosed = AtomicBoolean()
 
     /**
-     * The exception thrown by the body reading background thread, if any. The exception will be
-     * rethrown every time someone attempts to continue reading the body.
+     * 存储后台写线程发生的异常，以便在 Cronet 下次调用 read 时抛出。
      */
-    private val backgroundReadThrowable = AtomicReference<Throwable>()
+    private val backgroundReadThrowable = AtomicReference<Throwable>(null)
 
     /**
      * Indicates that Cronet is ready to receive another body part.
@@ -75,11 +74,18 @@ internal class UploadBodyDataSink : Sink {
             return future
         }
         val future = CompletableFutureCompat<ReadResult>()
-        pendingRead.add(Pair(readBuffer, future))
 
-        // Properly handle interleaving handleBackgroundReadError / enqueueBodyRead calls.
-        if (backgroundReadThrowable.get().also { backgroundThrowable = it } != null) {
-            future.completeExceptionally(backgroundThrowable!!)
+
+        try {
+            pendingRead.put(Pair(readBuffer, future))
+        } catch (e: InterruptedException) {
+            Thread.currentThread().interrupt()
+            throw RuntimeException("Interrupted while enqueueing read", e)
+        }
+
+        backgroundThrowable = backgroundReadThrowable.get()
+        if (backgroundThrowable != null) {
+            future.completeExceptionally(backgroundThrowable)
         }
         return future
     }
@@ -91,9 +97,10 @@ internal class UploadBodyDataSink : Sink {
      * This method is executed by the background OkHttp body reading thread.
      */
     fun setBackgroundReadError(t: Throwable) {
-        backgroundReadThrowable.set(t)
-        val read = pendingRead.poll()
-        read?.second?.completeExceptionally(t)
+        if (backgroundReadThrowable.compareAndSet(null, t)) {
+            val read = pendingRead.poll()
+            read?.second?.completeExceptionally(t)
+        }
     }
 
     /**
@@ -104,8 +111,9 @@ internal class UploadBodyDataSink : Sink {
      */
     @Throws(IOException::class)
     fun handleEndOfStreamSignal() {
-        check(!isClosed.getAndSet(true)) { "Already closed" }
-        pendingCronetRead.second.complete(ReadResult.END_OF_BODY)
+        if (isClosed.getAndSet(true)) return
+
+        takeNextReadRequest().second.complete(ReadResult.END_OF_BODY)
     }
 
     /**
@@ -119,38 +127,64 @@ internal class UploadBodyDataSink : Sink {
         // This is just a safeguard, close() is a no-op if the body length contract is honored.
         check(!isClosed.get())
         var bytesRemaining = byteCount
-        while (bytesRemaining != 0L) {
-            val payload = pendingCronetRead
+        while (bytesRemaining > 0L) {
+            // 获取下一个读取请求（阻塞等待 Cronet 提供 Buffer）
+            val payload = takeNextReadRequest()
             val readBuffer = payload.first
             val future = payload.second
-            val originalBufferLimit = readBuffer.limit()
-            val bytesToDrain = min(originalBufferLimit.toLong(), bytesRemaining).toInt()
-            readBuffer.limit(bytesToDrain)
+
             try {
-                val bytesRead = source.read(readBuffer).toLong()
-                if (bytesRead == -1L) {
-                    val e = IOException("The source has been exhausted but we expected more!")
-                    future.completeExceptionally(e)
-                    throw e
+                // 计算本次能写入多少
+                val bufferRemaining = readBuffer.remaining()
+
+                if (bufferRemaining == 0) {
+                    throw IOException("Cronet provided a full buffer!")
                 }
+
+                // 取 (Buffer剩余空间) 和 (待写入数据量) 的最小值
+                val bytesToWrite = min(bufferRemaining.toLong(), bytesRemaining).toInt()
+
+                // 限制 limit 以防止多写 (NIO Buffer 标准操作)
+                val originalLimit = readBuffer.limit()
+                readBuffer.limit(readBuffer.position() + bytesToWrite)
+
+                // 执行读取 (从 Okio Buffer -> NIO Buffer)
+                val bytesRead = source.read(readBuffer)
+
+                // 恢复 limit
+                readBuffer.limit(originalLimit)
+
+                if (bytesRead == -1) {
+                    throw IOException("Source exhausted prematurely")
+                }
+
                 bytesRemaining -= bytesRead
-                readBuffer.limit(originalBufferLimit)
+
+                // 通知 Cronet 这次读取完成
+                // 只要写入了数据，就让 Cronet 去处理。
+                // 如果 bytesRemaining > 0，循环回来会再次阻塞等待 Cronet 的下一次 read 请求。
                 future.complete(ReadResult.SUCCESS)
-            } catch (e: IOException) {
+
+            } catch (e: Throwable) {
                 future.completeExceptionally(e)
-                throw e
+                // 同时也标记全局错误，确保前台线程能感知
+                setBackgroundReadError(e)
+                if (e is IOException) throw e else throw IOException(e)
             }
         }
     }
 
-    @get:Throws(IOException::class)
-    private val pendingCronetRead: Pair<ByteBuffer, CompletableFutureCompat<ReadResult>>
-        get() = try {
+
+    @Throws(IOException::class)
+    private fun takeNextReadRequest(): Pair<ByteBuffer, CompletableFutureCompat<ReadResult>> {
+        return try {
             pendingRead.take()
         } catch (e: InterruptedException) {
             Thread.currentThread().interrupt()
             throw IOException("Interrupted while waiting for a read to finish!")
         }
+    }
+
 
     override fun close() {
         isClosed.set(true)
