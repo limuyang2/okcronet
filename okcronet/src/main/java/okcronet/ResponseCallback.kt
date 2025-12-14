@@ -50,7 +50,10 @@ class ResponseCallback(private val request: Request, readTimeoutMillis: Long, co
      */
     val response: Response
         @Throws(IOException::class)
-        get() = createResponse(request, urlResponseInfo, source)
+        get() {
+            val (source, urlResponseInfo) = responseFuture.getValue()
+            return createResponse(request, urlResponseInfo, source)
+        }
 
 
     /**

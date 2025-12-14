@@ -63,10 +63,8 @@ open class SourceCallback(readTimeoutMillis: Long, private val cookieJar: Cookie
 
     constructor(readTimeoutMillis: Long, cookieJar: CookieJar?) : this(readTimeoutMillis, cookieJar, true)
 
-    /** BodySource 的 Future  */
-    private val mSourceFuture = CompletableFutureCompat<Source>()
-
-    private val mUrlResponseInfo = CompletableFutureCompat<UrlResponseInfo>()
+    /** BodySource 和 UrlResponseInfo 的 Future  */
+    private val mFuture = CompletableFutureCompat<Pair<Source, UrlResponseInfo>>()
 
     /** 指定的读取超时  */
     private val readTimeoutMillis: Long
@@ -98,8 +96,8 @@ open class SourceCallback(readTimeoutMillis: Long, private val cookieJar: Cookie
      *
      * Please note that when streaming the response body, getting Source data from this may block.
      */
-    val sourceFuture: Future<Source>
-        get() = mSourceFuture
+    val responseFuture: Future<Pair<Source, UrlResponseInfo>>
+        get() = mFuture
 
     /**
      * 同步等待获取 Source 数据。阻塞调用。
@@ -108,40 +106,12 @@ open class SourceCallback(readTimeoutMillis: Long, private val cookieJar: Cookie
      */
     val source: Source
         @Throws(IOException::class)
-        get() = mSourceFuture.getValue()
+        get() = mFuture.getValue().first
 
-    /**
-     * 返回与此 cronet 请求回调关联的 [UrlResponseInfo]。
-     *
-     * Returns the [UrlResponseInfo] associated with this cronet request callback.
-     */
-    val urlResponseInfoFuture: Future<UrlResponseInfo>
-        get() = mUrlResponseInfo
 
     val urlResponseInfo: UrlResponseInfo
         @Throws(IOException::class)
-        get() = mUrlResponseInfo.getValue()
-
-    /**
-     * 网络返回的 Http Code。阻塞调用。
-     *
-     * The HTTP code returned by the network. Blocking calls.
-     */
-    val code: Int get() = mUrlResponseInfo.getValue().httpStatusCode
-
-    /**
-     * 网络是否请求成功。阻塞调用。
-     *
-     * Whether the network request is successful. Blocking calls.
-     */
-    fun isSuccess() = code in 200..299
-
-    /**
-     * HTTP状态消息。阻塞调用。
-     *
-     * HTTP status message. Blocking calls.
-     */
-    val message: String get() = mUrlResponseInfo.getValue().httpStatusText
+        get() = mFuture.getValue().second
 
 
     override fun onRedirectReceived(
@@ -154,8 +124,7 @@ open class SourceCallback(readTimeoutMillis: Long, private val cookieJar: Cookie
 
     override fun onResponseStarted(urlRequest: UrlRequest, urlResponseInfo: UrlResponseInfo) {
         cronetBodySource = CronetBodySource(urlRequest, readTimeoutMillis).apply {
-            check(mSourceFuture.complete(this))
-            check(mUrlResponseInfo.complete(urlResponseInfo))
+            check(mFuture.complete(this to urlResponseInfo))
         }
     }
 
@@ -190,8 +159,7 @@ open class SourceCallback(readTimeoutMillis: Long, private val cookieJar: Cookie
     override fun onFailed(
         urlRequest: UrlRequest, urlResponseInfo: UrlResponseInfo?, e: CronetException
     ) {
-        mUrlResponseInfo.completeExceptionally(e)
-        if (mSourceFuture.completeExceptionally(e)) {
+        if (mFuture.completeExceptionally(e)) {
             return
         }
 
@@ -213,8 +181,7 @@ open class SourceCallback(readTimeoutMillis: Long, private val cookieJar: Cookie
         // response about the cancellation as well. This becomes a no-op if the futures
         // were already set.
         val e = IOException("The request was canceled!")
-        mUrlResponseInfo.completeExceptionally(e)
-        mSourceFuture.completeExceptionally(e)
+        mFuture.completeExceptionally(e)
     }
 
     private class CronetBodySource(
