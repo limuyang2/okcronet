@@ -36,6 +36,10 @@ class CallCronetInterceptor(private val client: CronetClient) : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
         val request = chain.request()
 
+        if (chain.call().isCanceled) {
+            throw IOException("This Request is canceled!")
+        }
+
         // 构建 Cronet 的 Callback
         val callback = ResponseCallback(request, client.readTimeoutMillis, client.cookieJar, client.isFollowRedirect)
 
@@ -44,34 +48,25 @@ class CallCronetInterceptor(private val client: CronetClient) : Interceptor {
             request.url.toString(),
             callback,
             DirectExecutor.INSTANCE
-        ).allowDirectExecutor()
+        ).apply {
+            allowDirectExecutor()
             .setPriority(request.priority)
             .setHttpMethod(request.method)
             .addRequestAnnotation(AnnotationRequestInfo(request.method, request.priority))
             .setRequestFinishedListener(client.requestFinishedInfoListener)
 
-        client.trafficStatsTag?.let {
-            urlRequestBuilder.setTrafficStatsTag(it)
+            client.trafficStatsTag?.let { setTrafficStatsTag(it) }
+            client.networkHandle?.let { bindToNetwork(it) }
+            client.annotationList?.forEach { addRequestAnnotation(it) }
+
+            if (request.disableCache) {
+                disableCache()
+            }
         }
 
-        client.networkHandle?.let {
-            urlRequestBuilder.bindToNetwork(it)
-        }
-
-        client.annotationList?.forEach {
-            urlRequestBuilder.addRequestAnnotation(it)
-        }
-
-        if (request.disableCache) {
-            urlRequestBuilder.disableCache()
-        }
 
         request.body?.let {
-            val contentLength: Long = try {
-                it.length()
-            } catch (e: IOException) {
-                throw RuntimeException(e)
-            }
+            val contentLength: Long = it.length()
 
             if (contentLength > 0) {
                 urlRequestBuilder.setUploadDataProvider(
@@ -89,21 +84,17 @@ class CallCronetInterceptor(private val client: CronetClient) : Interceptor {
             // 设置 cookie
             val cookies: List<Cookie> = it.load(request.url)
             if (cookies.isNotEmpty()) {
-                val stringBuilder = StringBuilder()
-                for (cookie in cookies) {
-                    stringBuilder.append(cookie.toString()).append(";")
-                }
-                if (stringBuilder.isNotEmpty()) {
-                    headers = headers.newBuilder().add("Cookie", stringBuilder.toString()).build()
+                val cookieValue = cookies.joinToString("; ") { cookie -> cookie.toString() }
+                if (cookieValue.isNotEmpty()) {
+                    headers = headers.newBuilder().add("Cookie", cookieValue).build()
                 }
             }
         }
 
 
         // 最后设置给 Cronet UrlRequest
-        val s = headers.size
-        for (i in 0 until s) {
-            urlRequestBuilder.addHeader(headers.name(i), headers.value(i))
+        headers.forEach { (name, value) ->
+            urlRequestBuilder.addHeader(name, value)
         }
 
         urlRequest = urlRequestBuilder.build()
@@ -112,9 +103,9 @@ class CallCronetInterceptor(private val client: CronetClient) : Interceptor {
         if (chain.call().isCanceled) {
             urlRequest?.cancel()
             throw IOException("This Request is canceled!")
-        } else {
-            urlRequest?.start()
         }
+
+        urlRequest?.start()
 
         return callback.response
     }
