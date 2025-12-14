@@ -30,8 +30,10 @@ import okio.buffer
 import org.chromium.net.UploadDataProvider
 import org.chromium.net.UploadDataSink
 import java.io.IOException
+import java.io.InterruptedIOException
 import java.nio.ByteBuffer
 import java.util.concurrent.*
+import kotlin.math.min
 
 /**
  * 提供 Cornet 的 [UploadDataProvider]，用于将 RequestBody 进行上传。
@@ -87,9 +89,24 @@ class UploadDataHelper private constructor() {
             private val requestBody: RequestBody,
             private val sink: UploadBodyDataSink,
             writeTimeoutMillis: Long,
-            private val readTaskExecutor: ExecutorService = Executors.newSingleThreadExecutor()
         ) : UploadDataProvider() {
-            private val writeTimeoutMillis: Long
+
+            // 全局共享线程池，避免每个请求创建一个线程造成的资源枯竭
+            companion object {
+                private val SHARED_EXECUTOR: ExecutorService by lazy {
+                    ThreadPoolExecutor(
+                        0, Int.MAX_VALUE,
+                        30L, TimeUnit.SECONDS,
+                        SynchronousQueue()
+                    ) { r ->
+                        Thread(r, "OkCronet-Upload-Worker").apply { isDaemon = true }
+                    }
+                }
+            }
+
+            // So that we don't have to special case infinity. Int.MAX_VALUE is ~infinity for all
+            // practical use cases.
+            private val writeTimeoutMillis: Long = if (writeTimeoutMillis == 0L) Int.MAX_VALUE.toLong() else writeTimeoutMillis
 
             /** 此 Future 用于在后台读取 RequestBody */
             @Volatile
@@ -98,23 +115,22 @@ class UploadDataHelper private constructor() {
             /** The number of bytes we read from the RequestBody thus far.  */
             private var totalBytesReadFromHttp: Long = 0
 
-            init {
-                // So that we don't have to special case infinity. Int.MAX_VALUE is ~infinity for all
-                // practical use cases.
-                this.writeTimeoutMillis =
-                    if (writeTimeoutMillis == 0L) Int.MAX_VALUE.toLong() else writeTimeoutMillis
-            }
-
             @Throws(IOException::class)
             override fun getLength(): Long = requestBody.length()
 
             @Throws(IOException::class)
             override fun read(uploadDataSink: UploadDataSink, byteBuffer: ByteBuffer) {
                 ensureReadTaskStarted()
-                if (length == -1L) {
-                    readUnknownBodyLength(uploadDataSink, byteBuffer)
-                } else {
-                    readKnownBodyLength(uploadDataSink, byteBuffer)
+
+                try {
+                    if (length == -1L) {
+                        readUnknownBodyLength(uploadDataSink, byteBuffer)
+                    } else {
+                        readKnownBodyLength(uploadDataSink, byteBuffer)
+                    }
+                } catch (e: Exception) {
+                    // 统一捕获 TimeoutException, ExecutionException 等
+                    handleReadException(uploadDataSink, e)
                 }
             }
 
@@ -122,31 +138,24 @@ class UploadDataHelper private constructor() {
             private fun readKnownBodyLength(
                 uploadDataSink: UploadDataSink, byteBuffer: ByteBuffer
             ) {
-                try {
-                    val readResult = readFromByteBuffer(byteBuffer)
-                    if (totalBytesReadFromHttp > length) {
-                        throw prepareBodyTooLongException(length, totalBytesReadFromHttp)
-                    } else if (totalBytesReadFromHttp < length) {
-                        when (readResult) {
-                            UploadBodyDataSink.ReadResult.SUCCESS -> uploadDataSink.onReadSucceeded(
-                                false
-                            )
-                            UploadBodyDataSink.ReadResult.END_OF_BODY -> throw IOException("The source has been exhausted but we expected more data!")
-                        }
-                        return
-                    } else {
-                        /*
-                        Else we're handling what's supposed to be the last chunk.
-                        反之，进行最后一块 body 内容的读取。
-                         */
-                        handleLastBodyRead(uploadDataSink, byteBuffer)
+                val readResult = readFromByteBuffer(byteBuffer)
+                if (totalBytesReadFromHttp > length) {
+                    throw prepareBodyTooLongException(length, totalBytesReadFromHttp)
+                } else if (totalBytesReadFromHttp < length) {
+                    when (readResult) {
+                        UploadBodyDataSink.ReadResult.SUCCESS -> uploadDataSink.onReadSucceeded(
+                            false
+                        )
+
+                        UploadBodyDataSink.ReadResult.END_OF_BODY -> throw IOException("The source has been exhausted but we expected more data!")
                     }
-                } catch (e: TimeoutException) {
-                    readTaskFuture?.cancel(true)
-                    uploadDataSink.onReadError(IOException(e))
-                } catch (e: ExecutionException) {
-                    readTaskFuture?.cancel(true)
-                    uploadDataSink.onReadError(IOException(e))
+                    return
+                } else {
+                    /*
+                    Else we're handling what's supposed to be the last chunk.
+                    反之，进行最后一块 body 内容的读取。
+                     */
+                    handleLastBodyRead(uploadDataSink, byteBuffer)
                 }
             }
 
@@ -183,28 +192,25 @@ class UploadDataHelper private constructor() {
             private fun readUnknownBodyLength(
                 uploadDataSink: UploadDataSink, byteBuffer: ByteBuffer
             ) {
-                try {
-                    val readResult = readFromByteBuffer(byteBuffer)
-                    uploadDataSink.onReadSucceeded(readResult == UploadBodyDataSink.ReadResult.END_OF_BODY)
-                } catch (e: TimeoutException) {
-                    readTaskFuture?.cancel(true)
-                    uploadDataSink.onReadError(IOException(e))
-                } catch (e: ExecutionException) {
-                    readTaskFuture?.cancel(true)
-                    uploadDataSink.onReadError(IOException(e))
-                }
+                val readResult = readFromByteBuffer(byteBuffer)
+                uploadDataSink.onReadSucceeded(readResult == UploadBodyDataSink.ReadResult.END_OF_BODY)
             }
 
+            @Synchronized
             private fun ensureReadTaskStarted() {
                 // We don't expect concurrent calls so a simple flag is sufficient
                 // 我们不期望并发调用，简单的标志就足够了
                 if (readTaskFuture == null) {
-                    readTaskFuture = readTaskExecutor.submit {
+                    readTaskFuture = SHARED_EXECUTOR.submit {
                         try {
                             val bufferedSink: BufferedSink = sink.buffer()
                             requestBody.writeTo(bufferedSink)
                             bufferedSink.flush()
                             sink.handleEndOfStreamSignal()
+                        } catch (_: InterruptedIOException) {
+                            // 忽略因 close() 导致的中断异常，避免误报错误
+                        } catch (_: InterruptedException) {
+                            // 忽略线程中断
                         } catch (e: Throwable) {
                             sink.setBackgroundReadError(e)
                         }
@@ -221,10 +227,25 @@ class UploadDataHelper private constructor() {
                 return readResult
             }
 
+            private fun handleReadException(uploadDataSink: UploadDataSink, e: Exception) {
+                // 发生错误时取消后台任务
+                close()
+                val exceptionToReport = if (e is ExecutionException || e is TimeoutException) {
+                    IOException(e)
+                } else {
+                    e
+                }
+                uploadDataSink.onReadError(exceptionToReport)
+            }
+
             override fun rewind(uploadDataSink: UploadDataSink) {
                 uploadDataSink.onRewindError(UnsupportedOperationException("Rewind is not supported!"))
             }
 
+            override fun close() {
+                // Cronet 请求结束或取消时，必须中断后台的 writeTo 线程
+                readTaskFuture?.cancel(true)
+            }
         }
 
         /**
@@ -236,41 +257,123 @@ class UploadDataHelper private constructor() {
             private val requestBody: RequestBody
         ) : UploadDataProvider() {
 
-            @Volatile
-            private var isMaterialized = false
-            private val materializedBody = Buffer()
+            private var cachedBuffer: ByteBuffer? = null
 
             override fun getLength(): Long = requestBody.length()
 
             @Throws(IOException::class)
             override fun read(uploadDataSink: UploadDataSink, byteBuffer: ByteBuffer) {
-                // We're not expecting any concurrent calls here so a simple flag should be sufficient.
-                // 不希望这里有任何并发调用，一个简单的标志就足够了。
-                if (!isMaterialized) {
-                    requestBody.writeTo(materializedBody)
-                    materializedBody.flush()
-                    isMaterialized = true
-                    val reportedLength = length
-                    val actualLength = materializedBody.size
-                    if (actualLength != reportedLength) {
-                        uploadDataSink.onReadError(
-                            IOException("Expected $reportedLength bytes but got $actualLength")
-                        )
+                if (cachedBuffer == null) {
+                    // 第一次读取，将数据完全读入内存
+
+                    val contentLength = length
+
+                    // 处理空 Body 的情况，避免分配 0 长度的 Buffer
+                    if (contentLength == 0L) {
+                        cachedBuffer = ByteBuffer.allocate(0)
+                        uploadDataSink.onReadSucceeded(false)
                         return
                     }
+
+                    if (contentLength != -1L) {
+                        // 【已知长度，直接分配 ByteBuffer 并写入，0拷贝
+                        try {
+                            // 根据长度直接分配 NIO Buffer
+                            val buffer = ByteBuffer.allocate(contentLength.toInt())
+
+                            // 创建一个适配器，把 ByteBuffer 伪装成 Okio 的 Sink
+                            val nioSink = object : okio.Sink {
+                                override fun write(source: Buffer, byteCount: Long) {
+                                    // 直接从 Okio Buffer 搬运到 NIO ByteBuffer
+                                    // 必须确保从 source 中消耗掉 byteCount 个字节写入 buffer
+                                    var bytesLeft = byteCount.toInt()
+                                    while (bytesLeft > 0) {
+                                        // 临时限制 buffer 的 limit，防止读取超过 bytesLeft
+                                        // 同时也起到控制 read 读取量的作用
+                                        val oldLimit = buffer.limit()
+                                        val toRead = min(
+                                            bytesLeft, oldLimit - buffer.position()
+                                        )
+
+                                        if (toRead == 0) {
+                                            throw IOException("Buffer full, cannot write $bytesLeft more bytes")
+                                        }
+
+                                        buffer.limit(buffer.position() + toRead)
+
+                                        val readCount = source.read(buffer)
+
+                                        buffer.limit(oldLimit) // 恢复 limit
+
+                                        if (readCount == -1) throw IOException("Source exhausted prematurely")
+                                        bytesLeft -= readCount
+                                    }
+                                }
+
+                                override fun flush() {}
+                                override fun timeout() = okio.Timeout.NONE
+                                override fun close() {}
+                            }
+
+                            // 写入数据
+                            val bufferedSink = nioSink.buffer()
+                            requestBody.writeTo(bufferedSink)
+                            bufferedSink.flush()
+
+                            // 准备读取（将 position 归零，limit 设为写入量）
+                            buffer.flip()
+
+                            // 校验实际写入长度
+                            if (buffer.limit().toLong() != contentLength) {
+                                throw IOException("Expected $contentLength bytes but wrote ${buffer.limit()}")
+                            }
+
+                            cachedBuffer = buffer
+                        } catch (_: java.nio.BufferOverflowException) {
+                            throw IOException("Request body wrote more bytes than Content-Length: $contentLength")
+                        }
+                    } else {
+                        // 长度未知，必须使用自动扩容的 Buffer
+                        val buffer = Buffer()
+                        requestBody.writeTo(buffer)
+                        cachedBuffer = ByteBuffer.wrap(buffer.readByteArray())
+                    }
                 }
-                check(materializedBody.read(byteBuffer) != -1) {
-                    // This should never happen - for known body length we shouldn't be called at all
-                    // if there's no more data to read.
-                    "The source has been exhausted but we expected more!"
+
+                val source = cachedBuffer!!
+
+                if (!source.hasRemaining()) {
+                    // 数据已读完，理论上 Cronet 不应再调用 read，除非发生了意料之外的状态
+                    uploadDataSink.onReadSucceeded(false)
+                    return
                 }
+
+                // 将数据推入 Cronet 的 byteBuffer
+                // 计算本次能读取的最大字节数：取 目标容器剩余空间 和 源数据剩余数据 的最小值
+                val bytesToWrite = min(byteBuffer.remaining(), source.remaining())
+
+                // 记录原始 limit，设置临时 limit 以进行批量 put 操作
+                val originalLimit = source.limit()
+                source.limit(source.position() + bytesToWrite)
+
+                // 写入 cronet 的 byteBuffer 中
+                byteBuffer.put(source)
+
+                // 恢复 limit
+                source.limit(originalLimit)
+
                 uploadDataSink.onReadSucceeded(false)
             }
 
             override fun rewind(uploadDataSink: UploadDataSink) {
-                isMaterialized = false
-                materializedBody.clear()
+                // 重置 ByteBuffer 位置，实现 0 开销重试
+                cachedBuffer?.position(0)
                 uploadDataSink.onRewindSucceeded()
+            }
+
+            override fun close() {
+                cachedBuffer?.clear()
+                cachedBuffer = null
             }
         }
     }
