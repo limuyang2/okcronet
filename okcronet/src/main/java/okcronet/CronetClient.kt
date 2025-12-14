@@ -75,7 +75,7 @@ class CronetClient private constructor(
         private var readTimeoutMillis: Long = 5_000L
         private var writeTimeoutMillis: Long = 5_000L
 
-        private var callTimeoutMillis: Long = 10_000L // No timeout
+        private var callTimeoutMillis: Long = 10_000L
         private var callbackExecutorService: ExecutorService? = null
         private var cookieJar: CookieJar? = null
         private var isFollowRedirect: Boolean = true

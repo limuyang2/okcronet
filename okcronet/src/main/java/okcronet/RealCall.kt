@@ -67,7 +67,7 @@ internal class RealCall(
         try {
             timeout.enter()
             client.dispatcher.add(this)
-            return toHookResponse(getResponseWithInterceptorChain())
+            return getResponseWithInterceptorChain()
         } catch (e: RuntimeException) {
             throw e
         } catch (e: IOException) {
@@ -80,32 +80,33 @@ internal class RealCall(
 
     override fun enqueue(responseCallback: Callback) {
         evaluateExecutionPreconditions()
-        timeout.enter()
 
-        client.responseCallbackExecutor.execute {
-            try {
-                client.dispatcher.add(this)
+        client.dispatcher.add(this)
 
-                val response = getResponseWithInterceptorChain()
-                timeout.exit()
-                client.dispatcher.finished(this)
-                responseCallback.onResponse(this, toHookResponse(response))
-            } catch (e: ExecutionException) {
-                timeout.exit()
-                client.dispatcher.finished(this)
-                responseCallback.onFailure(this, IOException(e.cause ?: e))
-                return@execute
-            } catch (e: IOException) {
-                timeout.exit()
-                client.dispatcher.finished(this)
-                responseCallback.onFailure(this, e)
-                return@execute
-            } catch (e: Throwable) {
-                timeout.exit()
-                client.dispatcher.finished(this)
-                responseCallback.onFailure(this, IOException(e))
-                return@execute
+        try {
+            client.responseCallbackExecutor.execute {
+                timeout.enter()
+                try {
+                    val response = getResponseWithInterceptorChain()
+                    timeout.exit()
+                    client.dispatcher.finished(this)
+                    responseCallback.onResponse(this, response)
+                } catch (e: ExecutionException) {
+                    timeout.exit()
+                    client.dispatcher.finished(this)
+                    responseCallback.onFailure(this, IOException(e.cause ?: e))
+                    return@execute
+                } catch (e: Throwable) {
+                    timeout.exit()
+                    client.dispatcher.finished(this)
+                    responseCallback.onFailure(this, e as? IOException ?: IOException(e))
+                    return@execute
+                }
             }
+        } catch (e: java.util.concurrent.RejectedExecutionException) {
+            // 提交线程池失败
+            client.dispatcher.finished(this)
+            responseCallback.onFailure(this, IOException("Executor rejected task", e))
         }
     }
 
@@ -169,13 +170,5 @@ internal class RealCall(
     }
 
 
-    private fun toHookResponse(response: Response): Response =
-        checkNotNull(response.body).let {
-            response.newBuilder().body(object : CronetTransportResponseBody(it) {
-                override fun customCloseHook() {
-                    timeout.exit()
-                }
-            }).build()
-        }
 
 }
