@@ -85,9 +85,11 @@ internal class RealCall(
 
         try {
             client.responseCallbackExecutor.execute {
-                timeout.enter()
                 try {
+                    timeout.enter()
+
                     val response = getResponseWithInterceptorChain()
+
                     timeout.exit()
                     client.dispatcher.finished(this)
                     responseCallback.onResponse(this, response)
