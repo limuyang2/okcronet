@@ -20,7 +20,7 @@ Google 提供了一个 `okhttp` 到 `Cronet` 的桥接实现 [cronet-transport-f
 ## 引入本库
 ```
     // 引入本库
-    implementation("io.github.limuyang2:okcronet:1.0.8")
+    implementation("io.github.limuyang2:okcronet:1.0.11")
 ```
 
 ## 引入 Cronet 库

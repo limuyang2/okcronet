@@ -113,6 +113,26 @@ open class SourceCallback(readTimeoutMillis: Long, private val cookieJar: Cookie
         @Throws(IOException::class)
         get() = mFuture.getValue().second
 
+    /**
+     * 网络返回的 Http Code。阻塞调用。
+     *
+     * The HTTP code returned by the network. Blocking calls.
+     */
+    val code: Int get() = responseFuture.getValue().second.httpStatusCode
+
+    /**
+     * 网络是否请求成功。阻塞调用。
+     *
+     * Whether the network request is successful. Blocking calls.
+     */
+    fun isSuccess() = code in 200..299
+
+    /**
+     * HTTP状态消息。阻塞调用。
+     *
+     * HTTP status message. Blocking calls.
+     */
+    val message: String get() = responseFuture.getValue().second.httpStatusText
 
     override fun onRedirectReceived(
         urlRequest: UrlRequest, urlResponseInfo: UrlResponseInfo, nextUrl: String
